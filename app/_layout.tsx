@@ -53,6 +53,10 @@ export default function RootLayout() {
               headerShown: false,
             }}
           />
+          <Stack.Screen name="autism" options={{ headerShown: false }} />
+          <Stack.Screen name="communication-support" options={{ headerShown: false }} />
+          <Stack.Screen name="aac-apps-lectures" options={{ headerShown: false }} />
+          <Stack.Screen name="lecture-player" options={{ headerShown: false }} />
         </Stack>
       </AuthProvider>
     </ErrorBoundary>

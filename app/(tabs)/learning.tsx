@@ -9,76 +9,130 @@ import {
     View,
 } from "react-native";
 import { colors, shadows, spacing, typography } from "../../constants/theme";
+import { router } from "expo-router";
+
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  duration: string;
+  progress: number;
+  level: string;
+  lessons: number;
+  completed: number;
+  color: string;
+}
 
 const { width } = Dimensions.get("window");
 
 export default function LearningScreen() {
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [learningModules, setLearningModules] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const categories = [
     { id: "all", name: "All", icon: "grid-outline" },
-    { id: "sign-language", name: "Sign Language", icon: "hand-left-outline" },
-    { id: "communication", name: "Communication", icon: "chatbubbles-outline" },
-    { id: "awareness", name: "Awareness", icon: "bulb-outline" },
+    { id: "cognitive", name: "Cognitive & Learning", icon: "brain-outline" },
+    { id: "speech", name: "Speech & Communication", icon: "chatbubbles-outline" },
+    { id: "visual", name: "Visual", icon: "eye-outline" },
+    { id: "hearing", name: "Hearing", icon: "ear-outline" },
+    { id: "physical", name: "Physical & Mobility", icon: "walk-outline" },
+    { id: "mental", name: "Mental Health", icon: "heart-outline" },
   ];
 
-  const learningModules = [
+  // Mock data - replace with actual data service when available
+  const mockCourses: Course[] = [
     {
-      id: 1,
-      title: "Indian Sign Language Basics",
-      description: "Learn fundamental ISL gestures and expressions",
-      category: "sign-language",
-      duration: "2 hours",
-      progress: 75,
+      id: "1",
+      title: "Autism Support",
+      description: "Comprehensive support for autism spectrum conditions",
+      category: "cognitive",
+      duration: "4 hours",
+      progress: 60,
       level: "Beginner",
       lessons: 12,
-      completed: 9,
+      completed: 7,
+      color: "#FF6B6B",
     },
     {
-      id: 2,
-      title: "Communication Etiquette",
-      description: "Master respectful interaction guidelines",
-      category: "communication",
-      duration: "1.5 hours",
+      id: "2",
+      title: "Speech Therapy",
+      description: "Improve communication through speech exercises",
+      category: "speech",
+      duration: "3 hours",
       progress: 100,
-      level: "Beginner",
+      level: "Intermediate",
       lessons: 8,
       completed: 8,
+      color: "#4ECDC4",
     },
     {
-      id: 3,
-      title: "Disability Awareness",
-      description: "Understanding different types of disabilities",
-      category: "awareness",
-      duration: "3 hours",
-      progress: 40,
+      id: "3",
+      title: "Visual Impairment Support",
+      description: "Tools and techniques for visual accessibility",
+      category: "visual",
+      duration: "2.5 hours",
+      progress: 30,
+      level: "Beginner",
+      lessons: 10,
+      completed: 3,
+      color: "#45B7D1",
+    },
+    {
+      id: "4",
+      title: "Hearing Assistance",
+      description: "Communication strategies for hearing impaired",
+      category: "hearing",
+      duration: "3.5 hours",
+      progress: 0,
       level: "Intermediate",
       lessons: 15,
-      completed: 6,
-    },
-    {
-      id: 4,
-      title: "Assistive Communication",
-      description: "Tools and techniques for better communication",
-      category: "communication",
-      duration: "2.5 hours",
-      progress: 0,
-      level: "Intermediate",
-      lessons: 10,
       completed: 0,
+      color: "#96CEB4",
     },
     {
-      id: 5,
-      title: "Advanced ISL",
-      description: "Complex gestures and conversation skills",
-      category: "sign-language",
-      duration: "4 hours",
+      id: "5",
+      title: "Mobility Support",
+      description: "Physical accessibility and mobility assistance",
+      category: "physical",
+      duration: "2 hours",
+      progress: 0,
+      level: "Beginner",
+      lessons: 6,
+      completed: 0,
+      color: "#FFEAA7",
+    },
+    {
+      id: "6",
+      title: "Mental Health Awareness",
+      description: "Understanding and supporting mental health",
+      category: "mental",
+      duration: "4.5 hours",
       progress: 0,
       level: "Advanced",
-      lessons: 20,
+      lessons: 18,
       completed: 0,
+      color: "#DDA0DD",
     },
   ];
+
+  // Load data from mock service
+  React.useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setLearningModules(mockCourses);
+      } catch (error) {
+        console.error('Error loading courses:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const filteredModules = selectedCategory === "all" 
     ? learningModules 
@@ -132,15 +186,35 @@ export default function LearningScreen() {
 
       {/* Learning Modules */}
       <View style={styles.modulesContainer}>
+        {/* Cognitive & Learning Description */}
+        {selectedCategory === "cognitive" && (
+          <View style={styles.categoryDescription}>
+            <Text style={styles.categoryDescriptionText}>
+              These conditions impact how people process information, focus, or grasp concepts. 
+              Challenges like dyslexia, ADHD, and autism can affect reading, memory, and attention. 
+              Simplified content, visuals, and gamified tasks can help make learning easier.
+            </Text>
+          </View>
+        )}
+        
         {filteredModules.map((module) => (
-          <TouchableOpacity key={module.id} style={styles.moduleCard}>
+          <TouchableOpacity 
+            key={module.id} 
+            style={[styles.moduleCard, { borderLeftColor: module.color, borderLeftWidth: 4 }]}
+            onPress={() => {
+              if (module.title === "Autism Support") {
+                router.push("/autism");
+              }
+              // Add other navigation routes as needed
+            }}
+          >
             <View style={styles.moduleHeader}>
               <View style={styles.moduleInfo}>
                 <Text style={styles.moduleTitle}>{module.title}</Text>
                 <Text style={styles.moduleDescription}>{module.description}</Text>
               </View>
-              <View style={styles.moduleBadge}>
-                <Text style={styles.moduleLevel}>{module.level}</Text>
+              <View style={[styles.moduleBadge, { backgroundColor: module.color + '20' }]}>
+                <Text style={[styles.moduleLevel, { color: module.color }]}>{module.level}</Text>
               </View>
             </View>
 
@@ -164,7 +238,7 @@ export default function LearningScreen() {
                     styles.progressFill,
                     {
                       width: `${module.progress}%`,
-                      backgroundColor: getProgressColor(module.progress),
+                      backgroundColor: module.progress === 100 ? "#4CAF50" : module.color,
                     },
                   ]}
                 />
@@ -178,7 +252,7 @@ export default function LearningScreen() {
                   styles.actionButton,
                   module.progress === 100
                     ? styles.actionButtonCompleted
-                    : styles.actionButtonPrimary,
+                    : { backgroundColor: module.color },
                 ]}
               >
                 <Ionicons
@@ -271,11 +345,27 @@ const styles = StyleSheet.create({
   modulesContainer: {
     paddingHorizontal: spacing.xl,
   },
+  categoryDescription: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: "#FF6B6B",
+    ...shadows.small,
+  },
+  categoryDescriptionText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    textAlign: "left",
+  },
   moduleCard: {
     backgroundColor: colors.surface,
     borderRadius: 16,
     padding: spacing.lg,
     marginBottom: spacing.lg,
+    borderLeftWidth: 4,
     ...shadows.medium,
   },
   moduleHeader: {
