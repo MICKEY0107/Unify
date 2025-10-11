@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // MongoDB REST API configuration
-const API_BASE_URL = 'https://your-mongodb-api.herokuapp.com'; // Replace with your deployed API URL
+const API_BASE_URL = 'http://localhost:3000'; // Replace with your deployed API URL
 const FALLBACK_TO_LOCAL = true; // Use local storage as fallback
 
 export interface UserProfile {
