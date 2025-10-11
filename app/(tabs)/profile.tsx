@@ -192,8 +192,8 @@ export default function ProfileScreen() {
       {/* User Info Card */}
       <View style={styles.userCard}>
         <View style={styles.avatarContainer}>
-          {user?.photoURL ? (
-            <Image source={{ uri: user.photoURL }} style={styles.avatar} />
+          {userProfile?.profileImageUrl || user?.photoURL ? (
+            <Image source={{ uri: userProfile?.profileImageUrl || user?.photoURL }} style={styles.avatar} />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <Ionicons 
