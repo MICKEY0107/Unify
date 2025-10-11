@@ -93,6 +93,22 @@ export default function CommunityList() {
     loadPosts(category === "All Categories" ? undefined : category);
   };
 
+  const handleCategoryTagPress = (category: string) => {
+    // Map community categories to learning categories and routes
+    const categoryMapping: { [key: string]: string } = {
+      "Communication": "/(tabs)/learning?category=speech",
+      "Physical & Mobility": "/(tabs)/learning?category=physical", 
+      "Cognitive & Learning": "/(tabs)/learning?category=cognitive",
+      "Visual": "/(tabs)/learning?category=visual",
+      "Hearing": "/(tabs)/learning?category=hearing",
+      "Mental Health": "/(tabs)/learning?category=mental",
+      "General": "/(tabs)/learning"
+    };
+
+    const route = categoryMapping[category] || "/(tabs)/learning";
+    router.push(route as any);
+  };
+
   useEffect(() => {
     loadPosts();
     loadLikedPosts();
@@ -222,68 +238,91 @@ export default function CommunityList() {
           </View>
         ) : (
           filteredPosts.map((post) => (
-            <Link key={post._id} href={`/community/read/${post._id}`} asChild>
-              <TouchableOpacity style={styles.storyCard}>
-                <View style={styles.storyImageContainer}>
-                  <Image 
-                    source={post.image ? { uri: post.image } : require("../../../assets/images/community.png")} 
-                    style={styles.storyImage} 
-                    resizeMode="cover" 
-                  />
-                  <View style={styles.storyOverlay}>
-                    <View style={styles.readTimeContainer}>
-                      <Ionicons name="time-outline" size={14} color="#FFFFFF" />
-                      <Text style={styles.readTime}>{Math.ceil(post.content.join(' ').split(' ').length / 200)} min read</Text>
-                    </View>
-                    <View style={styles.categoryBadge}>
-                      <Text style={styles.categoryBadgeText}>{post.category}</Text>
-                    </View>
-                  </View>
-                </View>
-                
-                <View style={styles.storyContent}>
-                  <View style={styles.storyHeader}>
-                    <Text style={styles.storyTitle}>{post.title}</Text>
-                    <TouchableOpacity 
-                      style={styles.storyBadge}
-                      onPress={() => handleLike(post._id)}
-                    >
-                      <Ionicons 
-                        name={likedPosts.has(post._id) ? "heart" : "heart-outline"} 
-                        size={12} 
-                        color={likedPosts.has(post._id) ? "#FF6B6B" : "#FF6B6B"} 
-                      />
-                      <Text style={styles.storyBadgeText}>{post.likes} likes</Text>
-                    </TouchableOpacity>
-                  </View>
-                  
-                  {post.subtitle && (
-                    <Text style={styles.storySubtitle}>{post.subtitle}</Text>
-                  )}
-                  
-                  <Text style={styles.storyExcerpt} numberOfLines={3}>
-                    {post.content[0] || "Read the full story..."}
-                  </Text>
-                  
-                  <View style={styles.storyFooter}>
-                    <View style={styles.authorInfo}>
-                      <View style={styles.authorAvatar}>
-                        <Ionicons name="person" size={16} color={colors.primary} />
+            <View key={post._id} style={styles.storyCard}>
+              <Link href={`/community/read/${post._id}`} asChild>
+                <TouchableOpacity style={styles.storyCardContent}>
+                  <View style={styles.storyImageContainer}>
+                    <Image 
+                      source={post.image ? { uri: post.image } : require("../../../assets/images/community.png")} 
+                      style={styles.storyImage} 
+                      resizeMode="cover" 
+                    />
+                    <View style={styles.storyOverlay}>
+                      <View style={styles.readTimeContainer}>
+                        <Ionicons name="time-outline" size={14} color="#FFFFFF" />
+                        <Text style={styles.readTime}>{Math.ceil(post.content.join(' ').split(' ').length / 200)} min read</Text>
                       </View>
-                      <Text style={styles.authorName}>{post.author}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.storyContent}>
+                    <View style={styles.storyHeader}>
+                      <Text style={styles.storyTitle}>{post.title}</Text>
+                      
+                      {/* Likes and Category Tags on the right */}
+                      <View style={styles.tagsContainer}>
+                        <TouchableOpacity 
+                          style={styles.storyBadge}
+                          onPress={() => handleLike(post._id)}
+                        >
+                          <Ionicons 
+                            name={likedPosts.has(post._id) ? "heart" : "heart-outline"} 
+                            size={12} 
+                            color={likedPosts.has(post._id) ? "#FF6B6B" : "#FF6B6B"} 
+                          />
+                          <Text style={styles.storyBadgeText}>{post.likes} likes</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={styles.categoryTagInline}
+                          onPress={() => handleCategoryTagPress(post.category)}
+                        >
+                          <Ionicons name="book-outline" size={12} color={colors.primary} />
+                          <Text style={styles.categoryTagInlineText}>{post.category}</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     
-                    <TouchableOpacity 
-                      style={styles.readMoreButton}
-                      onPress={() => router.push(`/community/read/${post._id}`)}
-                    >
-                      <Text style={styles.readMoreText}>Read More</Text>
-                      <Ionicons name="arrow-forward" size={16} color={colors.primary} />
-                    </TouchableOpacity>
+                    {post.subtitle && (
+                      <Text style={styles.storySubtitle}>{post.subtitle}</Text>
+                    )}
+                    
+                    <Text style={styles.storyExcerpt} numberOfLines={3}>
+                      {post.content[0] || "Read the full story..."}
+                    </Text>
+                    
+                    <View style={styles.storyFooter}>
+                      <View style={styles.authorInfo}>
+                        <View style={styles.authorAvatar}>
+                          <Ionicons name="person" size={16} color={colors.primary} />
+                        </View>
+                        <Text style={styles.authorName}>{post.author}</Text>
+                      </View>
+                      
+                      <TouchableOpacity 
+                        style={styles.readMoreButton}
+                        onPress={() => router.push(`/community/read/${post._id}`)}
+                      >
+                        <Text style={styles.readMoreText}>Read More</Text>
+                        <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            </Link>
+                </TouchableOpacity>
+              </Link>
+              
+              {/* Learn about Category Tag at the bottom */}
+              <View style={styles.categoryTagContainer}>
+                <TouchableOpacity 
+                  style={styles.categoryTag}
+                  onPress={() => handleCategoryTagPress(post.category)}
+                >
+                  <Ionicons name="book-outline" size={14} color={colors.primary} />
+                  <Text style={styles.categoryTagText}>Learn about {post.category}</Text>
+                  <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            </View>
           ))
         )}
       </View>
@@ -419,6 +458,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...shadows.medium,
   },
+  storyCardContent: {
+    flex: 1,
+  },
   storyImageContainer: {
     position: "relative",
     height: 200,
@@ -454,6 +496,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: spacing.sm,
   },
+  tagsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
   storyTitle: {
     ...typography.h4,
     color: colors.textPrimary,
@@ -473,6 +520,20 @@ const styles = StyleSheet.create({
     color: "#FF6B6B",
     marginLeft: spacing.xs,
     fontWeight: "600",
+  },
+  categoryTagInline: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+  },
+  categoryTagInlineText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: "600",
+    marginLeft: spacing.xs,
   },
   storySubtitle: {
     ...typography.body,
@@ -612,5 +673,30 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: "#FFFFFF",
     fontWeight: "600",
+  },
+  categoryTagContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  categoryTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    ...shadows.small,
+  },
+  categoryTagText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: "600",
+    marginLeft: spacing.xs,
+    marginRight: spacing.xs,
+    flex: 1,
   },
 });

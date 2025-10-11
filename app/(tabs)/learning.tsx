@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
     Dimensions,
@@ -8,8 +9,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { colors, shadows, spacing, typography } from "../../constants/theme";
-import { router } from "expo-router";
+import { borderRadius, colors, shadows, spacing, typography } from "../../constants/theme";
 
 interface Course {
   id: string;
@@ -27,7 +27,8 @@ interface Course {
 const { width } = Dimensions.get("window");
 
 export default function LearningScreen() {
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const { category } = useLocalSearchParams<{ category?: string }>();
+  const [selectedCategory, setSelectedCategory] = useState(category || "all");
   const [learningModules, setLearningModules] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -134,6 +135,13 @@ export default function LearningScreen() {
     loadData();
   }, []);
 
+  // Handle category parameter from URL
+  React.useEffect(() => {
+    if (category) {
+      setSelectedCategory(category);
+    }
+  }, [category]);
+
   const filteredModules = selectedCategory === "all" 
     ? learningModules 
     : learningModules.filter(module => module.category === selectedCategory);
@@ -152,6 +160,14 @@ export default function LearningScreen() {
         <Text style={styles.headerSubtitle}>
           Build skills for inclusive communication
         </Text>
+        {category && (
+          <View style={styles.categoryIndicator}>
+            <Ionicons name="arrow-back" size={16} color={colors.primary} />
+            <Text style={styles.categoryIndicatorText}>
+              Showing courses related to {categories.find(cat => cat.id === category)?.name || category}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Categories */}
@@ -314,6 +330,21 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     ...typography.bodySmall,
     color: colors.textSecondary,
+  },
+  categoryIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.sm,
+  },
+  categoryIndicatorText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: "600",
+    marginLeft: spacing.xs,
   },
   categoriesContainer: {
     paddingVertical: spacing.lg,
