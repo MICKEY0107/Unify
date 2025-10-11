@@ -1,39 +1,39 @@
 export const colors = {
-  primary: "#007AFF",
-  primaryLight: "#E3F2FD",
-  secondary: "#8E8E93",
-  success: "#4CAF50",
-  warning: "#FF9800",
-  error: "#F44336",
-  info: "#2196F3",
+  primary: "#D4A574", // Warm golden brown
+  primaryLight: "#F5E6D3", // Light cream
+  secondary: "#8B7355", // Muted brown
+  success: "#6B8E23", // Olive green
+  warning: "#D2691E", // Warm orange
+  error: "#CD5C5C", // Muted red
+  info: "#4682B4", // Steel blue
   
   // Background colors
-  background: "#F8F9FA",
-  surface: "#FFFFFF",
-  surfaceSecondary: "#F5F5F5",
+  background: "#FEFBEA", // Cream background
+  surface: "#FFFFFF", // Pure white for cards
+  surfaceSecondary: "#F8F4E6", // Light cream
   
   // Text colors
-  textPrimary: "#1A1A1A",
-  textSecondary: "#666666",
-  textTertiary: "#8E8E93",
+  textPrimary: "#2C2C2C", // Dark brown
+  textSecondary: "#6B5B47", // Medium brown
+  textTertiary: "#8B7355", // Muted brown
   textInverse: "#FFFFFF",
   
   // Border colors
-  border: "#E5E5EA",
-  borderLight: "#F0F0F0",
+  border: "#E8DCC0", // Light cream border
+  borderLight: "#F0E6D2", // Very light cream
   
   // Status colors
-  verified: "#4CAF50",
-  pending: "#FF9800",
+  verified: "#6B8E23", // Olive green
+  pending: "#D2691E", // Warm orange
   
-  // Category colors
-  signLanguage: "#4ECDC4",
-  communication: "#45B7D1",
-  awareness: "#FF6B6B",
-  mobility: "#96CEB4",
-  visual: "#9C27B0",
-  hearing: "#FF9800",
-  cognitive: "#607D8B",
+  // Category colors - warm palette
+  signLanguage: "#8FBC8F", // Sage green
+  communication: "#87CEEB", // Sky blue
+  awareness: "#F4A460", // Sandy brown
+  mobility: "#DDA0DD", // Plum
+  visual: "#DEB887", // Burlywood
+  hearing: "#F0E68C", // Khaki
+  cognitive: "#B0C4DE", // Light steel blue
 };
 
 export const spacing = {

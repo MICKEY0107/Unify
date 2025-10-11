@@ -1,15 +1,15 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
-} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { colors, spacing, typography, shadows } from "../constants/theme";
+import React, { useState } from "react";
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { colors, shadows, spacing, typography } from "../constants/theme";
 
 interface Lecture {
   id: number;
@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   lectureNumberCompleted: {
-    backgroundColor: "#4CAF50",
+    //backgroundColor: "#4CAF50",
   },
   lectureNumberText: {
     ...typography.caption,

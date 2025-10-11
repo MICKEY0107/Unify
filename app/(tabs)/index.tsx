@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
     Dimensions,
@@ -9,21 +10,25 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
-import { colors, shadows, spacing, typography } from "../../constants/theme";
+import { borderRadius, colors, shadows, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
-import { mongoDBService } from "../../services/mongoDBService";
+import { CommunityPost, mongoDBService } from "../../services/mongoDBService";
 
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const isGuest = user?.uid === 'guest';
   const [userProfile, setUserProfile] = React.useState<any>(null);
+  const [topStories, setTopStories] = React.useState<CommunityPost[]>([]);
+  const [loadingStories, setLoadingStories] = React.useState(true);
 
   React.useEffect(() => {
     if (user && user.uid !== 'guest') {
       loadUserProfile();
     }
+    loadTopStories();
   }, [user]);
 
   const loadUserProfile = async () => {
@@ -34,6 +39,22 @@ export default function HomeScreen() {
       setUserProfile(profile);
     } catch (error) {
       console.error('Error loading user profile:', error);
+    }
+  };
+
+  const loadTopStories = async () => {
+    try {
+      setLoadingStories(true);
+      const allPosts = await mongoDBService.getPosts();
+      // Sort by likes and take top 3
+      const sortedPosts = allPosts
+        .sort((a, b) => (b.likes || 0) - (a.likes || 0))
+        .slice(0, 3);
+      setTopStories(sortedPosts);
+    } catch (error) {
+      console.error('Error loading top stories:', error);
+    } finally {
+      setLoadingStories(false);
     }
   };
   
@@ -136,6 +157,78 @@ export default function HomeScreen() {
             resizeMode="contain"
           />
         </View>
+      </View>
+
+      {/* Top Stories */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Our Top Stories</Text>
+          <TouchableOpacity 
+            style={styles.viewAllButton}
+            onPress={() => router.push('/(tabs)/community')}
+          >
+            <Text style={styles.viewAllText}>View All</Text>
+            <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        
+        {loadingStories ? (
+          <View style={styles.loadingContainer}>
+            <Ionicons name="hourglass-outline" size={32} color={colors.primary} />
+            <Text style={styles.loadingText}>Loading top stories...</Text>
+          </View>
+        ) : topStories.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.storiesScroll}>
+            {topStories.map((story, index) => (
+              <TouchableOpacity
+                key={story._id}
+                style={[styles.storyCard, { marginRight: index === topStories.length - 1 ? 0 : spacing.md }]}
+                onPress={() => router.push(`/community/read/${story._id}`)}
+              >
+                <View style={styles.storyImageContainer}>
+                  <Image 
+                    source={story.image ? { uri: story.image } : require("../../assets/images/community.png")} 
+                    style={styles.storyImage} 
+                    resizeMode="cover" 
+                  />
+                  <View style={styles.storyOverlay}>
+                    <View style={styles.rankBadge}>
+                      <Text style={styles.rankText}>#{index + 1}</Text>
+                    </View>
+                    <View style={styles.likesBadge}>
+                      <Ionicons name="heart" size={12} color="#FF6B6B" />
+                      <Text style={styles.likesText}>{story.likes}</Text>
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.storyContent}>
+                  <Text style={styles.storyTitle} numberOfLines={2}>{story.title}</Text>
+                  <Text style={styles.storyExcerpt} numberOfLines={2}>
+                    {story.content[0] || "Read the full story..."}
+                  </Text>
+                  <View style={styles.storyFooter}>
+                    <View style={styles.authorInfo}>
+                      <View style={styles.authorAvatar}>
+                        <Ionicons name="person" size={12} color={colors.primary} />
+                      </View>
+                      <Text style={styles.authorName}>{story.author}</Text>
+                    </View>
+                    <View style={styles.categoryTag}>
+                      <Text style={styles.categoryText}>{story.category}</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="book-outline" size={48} color={colors.textTertiary} />
+            <Text style={styles.emptyTitle}>No stories yet</Text>
+            <Text style={styles.emptySubtitle}>Be the first to share your story!</Text>
+          </View>
+        )}
       </View>
 
       {/* Quick Actions */}
@@ -382,6 +475,153 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
+  // Top Stories Styles
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.lg,
+  },
+  viewAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+  },
+  viewAllText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: "600",
+    marginRight: spacing.xs,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    paddingVertical: spacing.xl,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
+  storiesScroll: {
+    marginHorizontal: -spacing.xl,
+    paddingHorizontal: spacing.xl,
+  },
+  storyCard: {
+    width: 280,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    overflow: "hidden",
+    ...shadows.medium,
+  },
+  storyImageContainer: {
+    position: "relative",
+    height: 160,
+  },
+  storyImage: {
+    width: "100%",
+    height: "100%",
+  },
+  storyOverlay: {
+    position: "absolute",
+    top: spacing.md,
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  rankBadge: {
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+  },
+  rankText: {
+    ...typography.caption,
+    color: "#FFFFFF",
+    fontWeight: "bold",
+  },
+  likesBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+  },
+  likesText: {
+    ...typography.caption,
+    color: "#FFFFFF",
+    fontWeight: "600",
+    marginLeft: spacing.xs,
+  },
+  storyContent: {
+    padding: spacing.lg,
+  },
+  storyTitle: {
+    ...typography.h4,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  storyExcerpt: {
+    ...typography.body,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: spacing.md,
+  },
+  storyFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  authorInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  authorAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.sm,
+  },
+  authorName: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  categoryTag: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+  },
+  categoryText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: spacing.xxl,
+  },
+  emptyTitle: {
+    ...typography.h4,
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  emptySubtitle: {
+    ...typography.body,
     color: colors.textSecondary,
     textAlign: "center",
   },
