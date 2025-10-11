@@ -1,10 +1,10 @@
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import {
+    signOut as firebaseSignOut,
     GoogleAuthProvider,
     onAuthStateChanged,
     signInWithCredential,
     signInWithPopup,
-    signOut,
     User
 } from 'firebase/auth';
 import { Platform } from 'react-native';
@@ -63,10 +63,14 @@ export class AuthService {
         // Mobile implementation
         try {
           await GoogleSignin.hasPlayServices();
-          const { idToken } = await GoogleSignin.signIn();
+          const result = await GoogleSignin.signIn();
+        const idToken = result.data?.idToken;
+        if (!idToken) {
+          throw new Error('No ID token received from Google Sign-In');
+        }
           const googleCredential = GoogleAuthProvider.credential(idToken);
-          const result = await signInWithCredential(auth, googleCredential);
-          return this.mapFirebaseUserToAuthUser(result.user);
+          const firebaseResult = await signInWithCredential(auth, googleCredential);
+          return this.mapFirebaseUserToAuthUser(firebaseResult.user);
         } catch (mobileError) {
           console.error('Mobile Google Sign-In Error:', mobileError);
           throw new Error('Mobile Google Sign-In failed');
@@ -88,7 +92,7 @@ export class AuthService {
           // Continue with Firebase sign out even if Google sign out fails
         }
       }
-      await signOut(auth);
+      await firebaseSignOut(auth);
     } catch (error) {
       console.error('Sign out error:', error);
       throw new Error('Failed to sign out');

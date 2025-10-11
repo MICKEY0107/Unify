@@ -11,12 +11,31 @@ import {
 } from "react-native";
 import { colors, shadows, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { mongoDBService } from "../../services/mongoDBService";
 
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const isGuest = user?.uid === 'guest';
+  const [userProfile, setUserProfile] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    if (user && user.uid !== 'guest') {
+      loadUserProfile();
+    }
+  }, [user]);
+
+  const loadUserProfile = async () => {
+    if (!user || user.uid === 'guest') return;
+    
+    try {
+      const profile = await mongoDBService.getUserByUid(user.uid);
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
   
   const quickActions = [
     {
@@ -84,7 +103,7 @@ export default function HomeScreen() {
             <Text style={styles.heroBadgeText}>Empathy in Action</Text>
           </View>
           <Text style={styles.heroTitle}>
-            Welcome{user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''} to Unify
+            Welcome{userProfile?.customUsername ? `, ${userProfile.customUsername.split(' ')[0]}` : user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''} to Unify
           </Text>
           <Text style={styles.heroSubtitle}>
             Bridging Worlds, Building Empathy

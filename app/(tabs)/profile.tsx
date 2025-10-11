@@ -1,19 +1,66 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Image,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { imgBBService } from '../../services/imgBBService';
+import { mongoDBService, UserProfile } from '../../services/mongoDBService';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editImageUri, setEditImageUri] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (user && user.uid !== 'guest') {
+      loadUserProfile();
+    }
+  }, [user]);
+
+  const loadUserProfile = async () => {
+    if (!user || user.uid === 'guest') return;
+    
+    try {
+      setIsLoading(true);
+      const profile = await mongoDBService.getUserByUid(user.uid);
+      if (profile) {
+        setUserProfile(profile);
+        setEditUsername(profile.customUsername || profile.displayName || '');
+        setEditImageUri(profile.profileImageUrl || null);
+      } else {
+        // Create new user profile if doesn't exist
+        const newProfile = await mongoDBService.createUser({
+          uid: user.uid,
+          email: user.email || '',
+          displayName: user.displayName || '',
+          photoURL: user.photoURL,
+        });
+        setUserProfile(newProfile);
+        setEditUsername(newProfile.customUsername || newProfile.displayName || '');
+        setEditImageUri(newProfile.profileImageUrl || null);
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      Alert.alert('Error', 'Failed to load profile data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -39,6 +86,87 @@ export default function ProfileScreen() {
         },
       ]
     );
+  };
+
+  const handleEditProfile = () => {
+    if (user?.uid === 'guest') {
+      Alert.alert('Guest Mode', 'Please sign in to edit your profile.');
+      return;
+    }
+    setIsEditModalVisible(true);
+  };
+
+  const handleImagePicker = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setEditImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user || user.uid === 'guest') return;
+
+    try {
+      setIsLoading(true);
+
+      // Validate username
+      if (!editUsername.trim()) {
+        Alert.alert('Error', 'Username cannot be empty');
+        return;
+      }
+
+      // Check username availability
+      const isAvailable = await mongoDBService.checkUsernameAvailability(
+        editUsername.trim(),
+        user.uid
+      );
+
+      if (!isAvailable) {
+        Alert.alert('Error', 'Username is already taken');
+        return;
+      }
+
+      let imageUrl = editImageUri;
+
+      // Upload image if changed
+      if (editImageUri && editImageUri !== userProfile?.profileImageUrl) {
+        if (editImageUri.startsWith('http')) {
+          // Already uploaded
+          imageUrl = editImageUri;
+        } else {
+          // Upload new image
+          imageUrl = await imgBBService.uploadImageFromUri(editImageUri);
+        }
+      }
+
+      // Update user profile
+      const updatedProfile = await mongoDBService.updateUser(user.uid, {
+        customUsername: editUsername.trim(),
+        profileImageUrl: imageUrl,
+      });
+
+      if (updatedProfile) {
+        setUserProfile(updatedProfile);
+        setIsEditModalVisible(false);
+        Alert.alert('Success', 'Profile updated successfully');
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to save profile');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const isGuest = user?.uid === 'guest';
@@ -71,7 +199,7 @@ export default function ProfileScreen() {
         
         <View style={styles.userInfo}>
           <Text style={styles.userName}>
-            {user?.displayName || 'Guest User'}
+            {userProfile?.customUsername || user?.displayName || 'Guest User'}
           </Text>
           <Text style={styles.userEmail}>
             {user?.email || 'No email provided'}
@@ -89,46 +217,10 @@ export default function ProfileScreen() {
       <View style={styles.menuSection}>
         <Text style={styles.sectionTitle}>Account</Text>
         
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={handleEditProfile}>
           <View style={styles.menuItemLeft}>
             <Ionicons name="person-outline" size={24} color="#007AFF" />
             <Text style={styles.menuItemText}>Edit Profile</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Ionicons name="notifications-outline" size={24} color="#007AFF" />
-            <Text style={styles.menuItemText}>Notifications</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Ionicons name="shield-checkmark-outline" size={24} color="#007AFF" />
-            <Text style={styles.menuItemText}>Privacy & Security</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.menuSection}>
-        <Text style={styles.sectionTitle}>Support</Text>
-        
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Ionicons name="help-circle-outline" size={24} color="#007AFF" />
-            <Text style={styles.menuItemText}>Help & Support</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuItemLeft}>
-            <Ionicons name="information-circle-outline" size={24} color="#007AFF" />
-            <Text style={styles.menuItemText}>About</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#8E8E93" />
         </TouchableOpacity>
@@ -161,6 +253,75 @@ export default function ProfileScreen() {
       <View style={styles.versionSection}>
         <Text style={styles.versionText}>Unify v1.0.0</Text>
       </View>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => setIsEditModalVisible(false)}
+              style={styles.modalCancelButton}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Edit Profile</Text>
+            <TouchableOpacity
+              onPress={handleSaveProfile}
+              style={styles.modalSaveButton}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#007AFF" />
+              ) : (
+                <Text style={styles.modalSaveText}>Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {/* Profile Image */}
+            <View style={styles.imageSection}>
+              <Text style={styles.sectionLabel}>Profile Picture</Text>
+              <TouchableOpacity
+                style={styles.imageContainer}
+                onPress={handleImagePicker}
+              >
+                {editImageUri ? (
+                  <Image source={{ uri: editImageUri }} style={styles.editImage} />
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <Ionicons name="camera-outline" size={40} color="#8E8E93" />
+                  </View>
+                )}
+                <View style={styles.imageOverlay}>
+                  <Ionicons name="camera" size={20} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+              <Text style={styles.imageHint}>Tap to change profile picture</Text>
+            </View>
+
+            {/* Username */}
+            <View style={styles.inputSection}>
+              <Text style={styles.sectionLabel}>Username</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editUsername}
+                onChangeText={setEditUsername}
+                placeholder="Enter your username"
+                maxLength={30}
+              />
+              <Text style={styles.inputHint}>
+                This will be your display name in the app
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -347,5 +508,109 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: 12,
     color: '#8E8E93',
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  modalCancelButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  modalCancelText: {
+    fontSize: 16,
+    color: '#8E8E93',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  modalSaveButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  modalSaveText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  imageSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 12,
+  },
+  imageContainer: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  editImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  imagePlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#E5E5EA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+  imageHint: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
+  },
+  inputSection: {
+    marginBottom: 24,
+  },
+  textInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  inputHint: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 8,
   },
 });
