@@ -71,54 +71,36 @@ export default function CommunityPost() {
 
   const pickImage = async () => {
     try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (permissionResult.status !== 'granted') {
-        Alert.alert(
-          'Permission required',
-          'Permission to access media library is required to upload images. Please enable it in your device settings.'
-        );
-        return;
-      }
-
-      const res = await ImagePicker.launchImageLibraryAsync({ 
-        mediaTypes: ['images'], 
-        quality: 0.8,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
         allowsEditing: true,
-        aspect: [16, 9]
+        aspect: [16, 9], // Keep wider aspect for cover images
+        quality: 0.8,
       });
-      
-      if (!res.canceled && res.assets?.length) {
-        setImage(res.assets[0].uri);
+
+      if (!result.canceled && result.assets[0]) {
+        setImage(result.assets[0].uri);
       }
-    } catch (err) {
-      console.warn('Image picker error', err);
-      Alert.alert('Image picker error', String(err));
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
     }
   };
 
   const takePhoto = async () => {
     try {
-      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      if (permissionResult.status !== 'granted') {
-        Alert.alert(
-          'Permission required',
-          'Permission to access camera is required to take photos. Please enable it in your device settings.'
-        );
-        return;
-      }
-
-      const res = await ImagePicker.launchCameraAsync({
-        quality: 0.8,
+      const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
-        aspect: [16, 9]
+        aspect: [16, 9], // Keep wider aspect for cover images
+        quality: 0.8,
       });
-      
-      if (!res.canceled && res.assets?.length) {
-        setImage(res.assets[0].uri);
+
+      if (!result.canceled && result.assets[0]) {
+        setImage(result.assets[0].uri);
       }
-    } catch (err) {
-      console.warn('Camera error', err);
-      Alert.alert('Camera error', String(err));
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo');
     }
   };
 
