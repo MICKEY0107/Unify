@@ -2,13 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-    Dimensions,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { borderRadius, colors, shadows, spacing, typography } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -58,38 +58,38 @@ export default function HomeScreen() {
     }
   };
   
-  const quickActions = [
+  const   quickActions = [
     {
       id: 1,
       title: "Behavioral Tips",
       description: "Learn respectful interaction guidelines",
       icon: "bulb-outline",
-      color: colors.awareness,
-      gradient: ["#FF6B6B", "#FF8E8E"],
+      color: "#D4A574", // Warm golden brown
+      gradient: ["#D4A574", "#E6B885"],
     },
     {
       id: 2,
       title: "Sign Language",
       description: "Start learning Indian Sign Language",
       icon: "hand-left-outline",
-      color: colors.signLanguage,
-      gradient: ["#4ECDC4", "#6ED5D0"],
+      color: "#8FBC8F", // Sage green
+      gradient: ["#8FBC8F", "#A5C9A5"],
     },
     {
       id: 3,
       title: "Communication",
       description: "Improve inclusive communication",
       icon: "chatbubbles-outline",
-      color: colors.communication,
-      gradient: ["#45B7D1", "#6BC5D8"],
+      color: "#87CEEB", // Sky blue
+      gradient: ["#87CEEB", "#9DD4F0"],
     },
     {
       id: 4,
       title: "Find Support",
       description: "Connect with NGOs and resources",
       icon: "people-outline",
-      color: colors.mobility,
-      gradient: ["#96CEB4", "#A8D4C1"],
+      color: "#DDA0DD", // Plum
+      gradient: ["#DDA0DD", "#E6B3E6"],
     },
   ];
 
@@ -196,7 +196,7 @@ export default function HomeScreen() {
                       <Text style={styles.rankText}>#{index + 1}</Text>
                     </View>
                     <View style={styles.likesBadge}>
-                      <Ionicons name="heart" size={12} color="#FF6B6B" />
+                      <Ionicons name="heart" size={12} color="#E74C3C" />
                       <Text style={styles.likesText}>{story.likes}</Text>
                     </View>
                   </View>
@@ -265,14 +265,14 @@ export default function HomeScreen() {
                     : "people"
                 }
                 size={20}
-                color="#007AFF"
+                color={colors.primary}
               />
             </View>
             <View style={styles.activityContent}>
               <Text style={styles.activityTitle}>{activity.title}</Text>
               <Text style={styles.activityTime}>{activity.time}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
           </View>
         ))}
       </View>

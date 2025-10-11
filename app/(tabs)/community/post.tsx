@@ -3,16 +3,16 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { borderRadius, colors, shadows, spacing, typography } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -33,6 +33,7 @@ export default function CommunityPost() {
   const [authorName, setAuthorName] = useState("");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     if (user && user.uid !== 'guest') {
@@ -69,7 +70,9 @@ export default function CommunityPost() {
     "Visual", "Hearing", "Mental Health", "General"
   ];
 
-  const pickImage = async () => {
+
+  const handleImagePicker = async () => {
+    console.log('handleImagePicker called - opening image library');
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -79,6 +82,7 @@ export default function CommunityPost() {
       });
 
       if (!result.canceled && result.assets[0]) {
+        console.log('Image selected:', result.assets[0].uri);
         setImage(result.assets[0].uri);
       }
     } catch (error) {
@@ -87,51 +91,32 @@ export default function CommunityPost() {
     }
   };
 
-  const takePhoto = async () => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [16, 9], // Keep wider aspect for cover images
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        setImage(result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo');
-    }
-  };
-
-  const showImageOptions = () => {
-    Alert.alert(
-      "Add Image",
-      "Choose how you'd like to add an image to your story",
-      [
-        { text: "Camera", onPress: takePhoto },
-        { text: "Photo Library", onPress: pickImage },
-        { text: "Cancel", style: "cancel" }
-      ]
-    );
-  };
-
   const handleSubmit = async () => {
+    console.log('handleSubmit called');
+    console.log('Title:', title);
+    console.log('Body:', body);
+    console.log('Category:', category);
+    console.log('User:', user);
+    
     if (!title.trim() || !body.trim()) {
+      console.log('Missing title or body');
       Alert.alert("Missing Information", "Please fill in the title and story content.");
       return;
     }
 
     if (!category) {
+      console.log('Missing category');
       Alert.alert("Missing Category", "Please select a category for your story.");
       return;
     }
 
     if (!user) {
+      console.log('No user');
       Alert.alert("Authentication Required", "Please sign in to create a post.");
       return;
     }
 
+    console.log('Starting submit process...');
     setIsSubmitting(true);
     
     try {
@@ -139,6 +124,7 @@ export default function CommunityPost() {
       let imageUrl = image;
       if (image && !image.startsWith('http')) {
         try {
+          setIsUploadingImage(true);
           console.log('Uploading cover image to ImgBB...');
           imageUrl = await imgBBService.uploadImageFromUri(image);
           console.log('Cover image uploaded successfully:', imageUrl);
@@ -146,6 +132,8 @@ export default function CommunityPost() {
           console.error('Error uploading cover image:', uploadError);
           Alert.alert('Upload Error', 'Failed to upload cover image. Post will be created without image.');
           imageUrl = null;
+        } finally {
+          setIsUploadingImage(false);
         }
       }
 
@@ -187,7 +175,7 @@ export default function CommunityPost() {
     }
   };
 
-  const isFormValid = title.trim() && body.trim();
+  const isFormValid = title.trim() && body.trim() && category;
 
   return (
     <View style={styles.modalContainer}>
@@ -220,22 +208,44 @@ export default function CommunityPost() {
           <Text style={styles.sectionTitle}>Add a Cover Image</Text>
           <Text style={styles.sectionSubtitle}>Help your story stand out with a meaningful image</Text>
           
-          <TouchableOpacity style={styles.imageUpload} onPress={showImageOptions}>
+          <TouchableOpacity 
+            style={styles.imageUpload} 
+            onPress={handleImagePicker}
+            activeOpacity={0.7}
+          >
             {image ? (
               <View style={styles.imagePreview}>
                 <Image source={{ uri: image }} style={styles.uploadedImage} />
                 <TouchableOpacity 
                   style={styles.removeImage}
-                  onPress={() => setImage(null)}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setImage(null);
+                  }}
                 >
-                  <Ionicons name="close-circle" size={24} color="#FF6B6B" />
+                  <Ionicons name="close-circle" size={24} color="#E74C3C" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.imageOverlay}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleImagePicker();
+                  }}
+                >
+                  <Ionicons name="camera" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.uploadPlaceholder}>
-                <Ionicons name="camera" size={48} color={colors.textTertiary} />
+                <View style={styles.uploadIconContainer}>
+                  <Ionicons name="camera" size={48} color={colors.primary} />
+                </View>
                 <Text style={styles.uploadText}>Tap to add image</Text>
                 <Text style={styles.uploadSubtext}>Camera or Photo Library</Text>
+                <View style={styles.uploadHint}>
+                  <Ionicons name="information-circle-outline" size={16} color={colors.textTertiary} />
+                  <Text style={styles.uploadHintText}>Optional but recommended</Text>
+                </View>
               </View>
             )}
           </TouchableOpacity>
@@ -333,12 +343,23 @@ export default function CommunityPost() {
         <TouchableOpacity
           style={[
             styles.submitButton,
-            !isFormValid && styles.submitButtonDisabled
+            (!isFormValid || isUploadingImage) && styles.submitButtonDisabled
           ]}
-          onPress={handleSubmit}
-          disabled={!isFormValid || isSubmitting}
+          onPress={() => {
+            console.log('Submit button pressed');
+            console.log('isFormValid:', isFormValid);
+            console.log('isSubmitting:', isSubmitting);
+            console.log('isUploadingImage:', isUploadingImage);
+            handleSubmit();
+          }}
+          disabled={!isFormValid || isSubmitting || isUploadingImage}
         >
-          {isSubmitting ? (
+          {isUploadingImage ? (
+            <View style={styles.submittingContainer}>
+              <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.submitButtonText}>Uploading Image...</Text>
+            </View>
+          ) : isSubmitting ? (
             <View style={styles.submittingContainer}>
               <Ionicons name="hourglass-outline" size={20} color="#FFFFFF" />
               <Text style={styles.submitButtonText}>Publishing...</Text>
@@ -434,6 +455,7 @@ const styles = StyleSheet.create({
   imageUpload: {
     borderRadius: borderRadius.lg,
     overflow: "hidden",
+    backgroundColor: colors.surface,
   },
   imagePreview: {
     position: "relative",
@@ -460,14 +482,46 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  uploadIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
+  },
   uploadText: {
     ...typography.body,
-    color: colors.textTertiary,
+    color: colors.textPrimary,
     marginTop: spacing.sm,
+    fontWeight: "600",
   },
   uploadSubtext: {
     ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  uploadHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: spacing.sm,
+  },
+  uploadHintText: {
+    ...typography.caption,
     color: colors.textTertiary,
+    marginLeft: spacing.xs,
+  },
+  imageOverlay: {
+    position: "absolute",
+    bottom: spacing.sm,
+    right: spacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   inputSection: {
     marginBottom: spacing.xl,
