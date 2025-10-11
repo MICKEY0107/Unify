@@ -24,8 +24,9 @@ The Unify app now includes a live AI chatbot powered by Google's Gemini AI model
 
 ### Key Components
 1. **Context Prompting**: Each user message is enhanced with context about the app's purpose
-2. **Response Validation**: Ensures responses are appropriate and helpful
-3. **Fallback Logic**: Provides relevant responses even when AI service is unavailable
+2. **Markdown Rendering**: Custom React Native component that renders markdown formatting
+3. **Response Validation**: Ensures responses are appropriate and helpful
+4. **Fallback Logic**: Provides relevant responses even when AI service is unavailable
 
 ### Usage in App
 The chatbot is integrated into the Assistive Tools screen (`/assistive`) and provides:
@@ -34,6 +35,25 @@ The chatbot is integrated into the Assistive Tools screen (`/assistive`) and pro
 - Accessibility best practices
 - Communication etiquette tips
 - Resource recommendations
+
+## Markdown Support
+The chatbot now supports rich text formatting through a custom `MarkdownText` component:
+
+### Supported Formatting
+- **Bold text**: `**text**` renders as bold
+- **Italic text**: `*text*` renders as italic
+- **Headers**: `# Header` with multiple levels (H1-H6)
+- **Bullet points**: `* item` or `- item` with nesting support
+- **Numbered lists**: `1. item` converted to bullet points
+- **Inline code**: `` `code` `` with monospace font and background
+- **Code blocks**: ``` code ``` with syntax highlighting background
+
+### Features
+- Nested bullet points with proper indentation
+- Mixed formatting within text (bold + italic)
+- Proper spacing and line breaks
+- Mobile-optimized styling
+- Accessibility-friendly rendering
 
 ## API Configuration
 - **API Key**: `AIzaSyBS8MOynnTtKaFsItciTAyqcX4mCw_vGgE`

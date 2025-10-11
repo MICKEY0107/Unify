@@ -58,7 +58,7 @@ export default function AssistiveScreen() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [favoriteTitle, setFavoriteTitle] = useState("");
   const [showSaveFavorite, setShowSaveFavorite] = useState(false);
-  
+
   // Voice filtering state
   const [voiceSearchQuery, setVoiceSearchQuery] = useState("");
   const [selectedLanguageFilter, setSelectedLanguageFilter] = useState("all");
@@ -91,7 +91,7 @@ export default function AssistiveScreen() {
           }
         });
       }
-      return () => {};
+      return () => { };
     }, [isInitialized, refreshVoices])
   );
 
@@ -299,17 +299,17 @@ export default function AssistiveScreen() {
     if (!text || !text.trim()) {
       return { isValid: false, error: "Please enter some text to speak" };
     }
-    
+
     if (text.length > 4000) {
       return { isValid: false, error: "Text is too long. Maximum 4000 characters allowed." };
     }
-    
+
     // Check for potentially problematic characters
     const problematicChars = /[^\w\s.,!?;:'"()\-\n\r]/g;
     if (problematicChars.test(text)) {
       console.warn("Text contains special characters that may affect speech quality");
     }
-    
+
     return { isValid: true };
   };
 
@@ -328,7 +328,7 @@ export default function AssistiveScreen() {
 
     try {
       clearError();
-      
+
       if (textToSpeech.length > 1000) {
         await speakLongText(textToSpeech);
       } else {
@@ -382,10 +382,10 @@ export default function AssistiveScreen() {
       await saveFavorite(textToSpeech, favoriteTitle || undefined);
       setShowSaveFavorite(false);
       setFavoriteTitle("");
-      
+
       // Announce success to screen readers
       Alert.alert("Success", "Text saved to favorites!");
-      
+
       // Optional: Clear the text input after saving
       // setTextToSpeech("");
     } catch (err) {
@@ -404,14 +404,14 @@ export default function AssistiveScreen() {
     // Find the favorite to show confirmation
     const favorite = favorites.find(f => f.id === id);
     const favoriteTitle = favorite?.title || "this favorite";
-    
+
     Alert.alert(
       "Delete Favorite",
       `Are you sure you want to delete "${favoriteTitle}"? This action cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
+        {
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
@@ -461,27 +461,27 @@ export default function AssistiveScreen() {
         message: userMessage,
         timestamp: new Date().toLocaleTimeString(),
       };
-      
+
       // Add user message to chat
       setChatHistory(prev => [...prev, newMessage]);
       setChatbotMessage("");
       setIsChatLoading(true);
-      
+
       try {
         // Generate AI response
         const aiResponse = await googleAIService.generateResponse(userMessage);
-        
+
         const botResponse = {
           id: chatHistory.length + 2,
           type: "bot" as const,
           message: aiResponse,
           timestamp: new Date().toLocaleTimeString(),
         };
-        
+
         setChatHistory(prev => [...prev, botResponse]);
       } catch (error) {
         console.error('Error generating AI response:', error);
-        
+
         // Fallback response on error
         const errorResponse = {
           id: chatHistory.length + 2,
@@ -489,7 +489,7 @@ export default function AssistiveScreen() {
           message: "I apologize, but I'm having trouble connecting right now. Please try again in a moment. For immediate support, consider reaching out to a healthcare professional or crisis helpline.",
           timestamp: new Date().toLocaleTimeString(),
         };
-        
+
         setChatHistory(prev => [...prev, errorResponse]);
       } finally {
         setIsChatLoading(false);
@@ -553,7 +553,7 @@ export default function AssistiveScreen() {
 
         {/* Error Display */}
         {error && (
-          <View 
+          <View
             style={styles.errorContainer}
             accessible={true}
             accessibilityRole="alert"
@@ -561,8 +561,8 @@ export default function AssistiveScreen() {
           >
             <Ionicons name="warning" size={20} color="#F44336" />
             <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity 
-              onPress={clearError} 
+            <TouchableOpacity
+              onPress={clearError}
               style={styles.errorCloseButton}
               accessible={true}
               accessibilityRole="button"
@@ -604,7 +604,7 @@ export default function AssistiveScreen() {
             returnKeyType="done"
             blurOnSubmit={true}
           />
-          
+
           {/* Character Count */}
           <View style={styles.characterCountContainer}>
             <Text style={[
@@ -637,13 +637,13 @@ export default function AssistiveScreen() {
                 accessibilityLabel={isLoading ? "Loading speech synthesis" : "Speak text"}
                 accessibilityHint={
                   !isInitialized ? "Text-to-speech is initializing" :
-                  !textToSpeech.trim() ? "Enter text first to enable speech" :
-                  isLoading ? "Please wait while speech is being prepared" :
-                  "Convert the entered text to speech"
+                    !textToSpeech.trim() ? "Enter text first to enable speech" :
+                      isLoading ? "Please wait while speech is being prepared" :
+                        "Convert the entered text to speech"
                 }
-                accessibilityState={{ 
+                accessibilityState={{
                   disabled: !isInitialized || !textToSpeech.trim() || isLoading,
-                  busy: isLoading 
+                  busy: isLoading
                 }}
               >
                 {isLoading ? (
@@ -667,10 +667,10 @@ export default function AssistiveScreen() {
                     accessibilityHint={isPaused ? "Continue speaking the text" : "Temporarily stop speaking"}
                     accessibilityState={{ selected: isPaused }}
                   >
-                    <Ionicons 
-                      name={isPaused ? "play" : "pause"} 
-                      size={20} 
-                      color="#FFFFFF" 
+                    <Ionicons
+                      name={isPaused ? "play" : "pause"}
+                      size={20}
+                      color="#FFFFFF"
                     />
                     <Text style={styles.controlButtonText}>
                       {isPaused ? "Resume" : "Pause"}
@@ -1041,11 +1041,11 @@ export default function AssistiveScreen() {
               <View style={styles.sliderContainer}>
                 <Text style={styles.sliderLabel}>Slow</Text>
                 <View style={styles.sliderTrack}>
-                  <View 
+                  <View
                     style={[
-                      styles.sliderFill, 
+                      styles.sliderFill,
                       { width: `${((speechRate - 0.1) / 1.9) * 100}%` }
-                    ]} 
+                    ]}
                   />
                   <TouchableOpacity
                     style={[
