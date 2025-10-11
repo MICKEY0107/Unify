@@ -3,6 +3,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
     Dimensions,
     Image,
@@ -222,6 +223,14 @@ export default function CommunityPost() {
           <Text style={styles.headerTitle}>Share Your Story</Text>
         </View>
 
+      {/* Profile Loading Indicator */}
+      {isLoadingProfile && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading your profile...</Text>
+        </View>
+      )}
+
       {/* Form */}
       <View style={styles.form}>
         {/* Image Section */}
@@ -408,6 +417,21 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 40,
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.lg,
+    backgroundColor: colors.primaryLight,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.primary,
+    marginLeft: spacing.sm,
   },
   form: {
     padding: spacing.lg,

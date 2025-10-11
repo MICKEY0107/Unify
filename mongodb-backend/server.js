@@ -308,6 +308,24 @@ app.get('/api/posts/author/:authorId', async (req, res) => {
   }
 });
 
+// Clear test posts (development only)
+app.delete('/api/posts/test/clear', async (req, res) => {
+  try {
+    const result = await db.collection(POSTS_COLLECTION).deleteMany({ 
+      _id: { $regex: /^test_post_/ } 
+    });
+    
+    console.log(`Cleared ${result.deletedCount} test posts`);
+    res.json({ 
+      success: true, 
+      message: `Cleared ${result.deletedCount} test posts` 
+    });
+  } catch (error) {
+    console.error('Error clearing test posts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'MongoDB API is running' });
