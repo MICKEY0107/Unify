@@ -16,6 +16,7 @@ export default function CommunityReadById() {
   const [likes, setLikes] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [relatedStories, setRelatedStories] = useState<CommunityPost[]>([]);
 
   const loadStory = async () => {
     if (!id) return;
@@ -32,6 +33,9 @@ export default function CommunityReadById() {
         // Check if user has liked this post
         const hasLiked = await likedPostsService.isPostLiked(id);
         setIsLiked(hasLiked);
+
+        // Load related stories from the same category
+        await loadRelatedStories(fetchedStory.category, id);
       } else {
         setError('Story not found');
       }
@@ -40,6 +44,24 @@ export default function CommunityReadById() {
       setError('Failed to load story');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadRelatedStories = async (category: string, currentStoryId: string) => {
+    try {
+      // Fetch all posts from the same category
+      const allPosts = await mongoDBService.getPosts();
+      
+      // Filter posts by category and exclude current post
+      const sameCategoryPosts = allPosts
+        .filter(post => post.category === category && post._id !== currentStoryId)
+        .sort((a, b) => b.likes - a.likes) // Sort by likes
+        .slice(0, 3); // Get top 3
+      
+      setRelatedStories(sameCategoryPosts);
+    } catch (err) {
+      console.error('Error loading related stories:', err);
+      setRelatedStories([]);
     }
   };
 
@@ -203,13 +225,68 @@ export default function CommunityReadById() {
           </TouchableOpacity>
         </View>
 
-        {/* Related Stories - Simplified for now */}
+        {/* Related Stories */}
         <View style={styles.relatedSection}>
           <Text style={styles.relatedTitle}>More Inspiring Stories</Text>
-          <View style={styles.relatedPlaceholder}>
-            <Ionicons name="book-outline" size={48} color={colors.textTertiary} />
-            <Text style={styles.relatedPlaceholderText}>More stories coming soon!</Text>
-          </View>
+          <Text style={styles.relatedSubtitle}>
+            {relatedStories.length > 0 
+              ? `More stories from ${story.category}` 
+              : 'No other stories in this category yet'}
+          </Text>
+          
+          {relatedStories.length > 0 ? (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.relatedScrollContent}
+            >
+              {relatedStories.map((relatedStory) => (
+                <TouchableOpacity 
+                  key={relatedStory._id} 
+                  style={styles.relatedCard}
+                  onPress={() => router.push(`/community/read/${relatedStory._id}`)}
+                >
+                  <Image 
+                    source={relatedStory.image ? { uri: relatedStory.image } : require('../../../../assets/images/community - Read.png')} 
+                    style={styles.relatedImage} 
+                  />
+                  <View style={styles.relatedContent}>
+                    <View style={styles.relatedCategoryBadge}>
+                      <Text style={styles.relatedCategoryText}>{relatedStory.category}</Text>
+                    </View>
+                    <Text style={styles.relatedCardTitle} numberOfLines={2}>
+                      {relatedStory.title}
+                    </Text>
+                    <Text style={styles.relatedAuthor} numberOfLines={1}>
+                      By {relatedStory.authorCustomUsername || relatedStory.author}
+                    </Text>
+                    <View style={styles.relatedMeta}>
+                      <View style={styles.relatedLikes}>
+                        <Ionicons name="heart" size={14} color="#E74C3C" />
+                        <Text style={styles.relatedLikesText}>{relatedStory.likes}</Text>
+                      </View>
+                      <Text style={styles.relatedReadTime}>
+                        {Math.ceil(relatedStory.content.join(' ').split(' ').length / 200)} min
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.relatedPlaceholder}>
+              <Ionicons name="book-outline" size={48} color={colors.textTertiary} />
+              <Text style={styles.relatedPlaceholderText}>
+                Be the first to share a story in this category!
+              </Text>
+              <TouchableOpacity 
+                style={styles.relatedCtaButton}
+                onPress={() => router.push('/(tabs)/community/post')}
+              >
+                <Text style={styles.relatedCtaButtonText}>Share Your Story</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
       </ScrollView>
@@ -445,30 +522,78 @@ const styles = StyleSheet.create({
   relatedTitle: {
     ...typography.h4,
     color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  relatedSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
     marginBottom: spacing.md,
+    fontSize: 14,
+  },
+  relatedScrollContent: {
+    paddingRight: spacing.lg,
   },
   relatedCard: {
-    width: 200,
+    width: 240,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     marginRight: spacing.md,
     overflow: "hidden",
-    ...shadows.small,
+    ...shadows.medium,
   },
   relatedImage: {
     width: "100%",
-    height: 120,
+    height: 140,
+    backgroundColor: colors.surfaceSecondary,
   },
   relatedContent: {
     padding: spacing.md,
+  },
+  relatedCategoryBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+    marginBottom: spacing.xs,
+  },
+  relatedCategoryText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: "600",
+    fontSize: 11,
   },
   relatedCardTitle: {
     ...typography.body,
     color: colors.textPrimary,
     fontWeight: "600",
     marginBottom: spacing.xs,
+    lineHeight: 20,
   },
   relatedAuthor: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  relatedMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  relatedLikes: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  relatedLikesText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
+  relatedReadTime: {
     ...typography.caption,
     color: colors.textSecondary,
   },
@@ -492,10 +617,26 @@ const styles = StyleSheet.create({
   relatedPlaceholder: {
     alignItems: "center",
     paddingVertical: spacing.xl,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.sm,
   },
   relatedPlaceholderText: {
     ...typography.body,
     color: colors.textTertiary,
     marginTop: spacing.sm,
+    textAlign: "center",
+    marginBottom: spacing.md,
+  },
+  relatedCtaButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  relatedCtaButtonText: {
+    ...typography.button,
+    color: "#FFFFFF",
+    fontSize: 14,
   },
 });
