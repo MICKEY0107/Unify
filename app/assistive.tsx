@@ -2,19 +2,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    InteractionManager,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  InteractionManager,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
+import { googleAIService } from "../services/googleAIService";
 import { FavoriteText } from "../services/storageService";
 
 const { width } = Dimensions.get("window");
@@ -66,10 +67,11 @@ export default function AssistiveScreen() {
     {
       id: 1,
       type: "bot",
-      message: "Hello! I'm here to help with questions about disabilities and mental health. How can I assist you today?",
+      message: "Hello! I'm your AI assistant for disability awareness and mental health support. I'm here to help you learn about accessibility, inclusion, and provide guidance on various topics related to disabilities. How can I assist you today?",
       timestamp: new Date().toLocaleTimeString(),
     },
   ]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   // Platform capabilities
   const capabilities = getPlatformCapabilities();
@@ -449,29 +451,48 @@ export default function AssistiveScreen() {
     }
   };
 
-  const handleSendMessage = () => {
-    if (chatbotMessage.trim()) {
+  const handleSendMessage = async () => {
+    if (chatbotMessage.trim() && !isChatLoading) {
+      const userMessage = chatbotMessage.trim();
       const newMessage = {
         id: chatHistory.length + 1,
-        type: "user",
-        message: chatbotMessage,
+        type: "user" as const,
+        message: userMessage,
         timestamp: new Date().toLocaleTimeString(),
       };
       
-      setChatHistory([...chatHistory, newMessage]);
+      // Add user message to chat
+      setChatHistory(prev => [...prev, newMessage]);
+      setChatbotMessage("");
+      setIsChatLoading(true);
       
-      // Simulate bot response
-      setTimeout(() => {
+      try {
+        // Generate AI response
+        const aiResponse = await googleAIService.generateResponse(userMessage);
+        
         const botResponse = {
           id: chatHistory.length + 2,
-          type: "bot",
-          message: "Thank you for your question. I'm here to provide information and support about disabilities and mental health. For specific medical advice, please consult a healthcare professional.",
+          type: "bot" as const,
+          message: aiResponse,
           timestamp: new Date().toLocaleTimeString(),
         };
+        
         setChatHistory(prev => [...prev, botResponse]);
-      }, 1000);
-      
-      setChatbotMessage("");
+      } catch (error) {
+        console.error('Error generating AI response:', error);
+        
+        // Fallback response on error
+        const errorResponse = {
+          id: chatHistory.length + 2,
+          type: "bot" as const,
+          message: "I apologize, but I'm having trouble connecting right now. Please try again in a moment. For immediate support, consider reaching out to a healthcare professional or crisis helpline.",
+          timestamp: new Date().toLocaleTimeString(),
+        };
+        
+        setChatHistory(prev => [...prev, errorResponse]);
+      } finally {
+        setIsChatLoading(false);
+      }
     }
   };
 
@@ -711,7 +732,10 @@ export default function AssistiveScreen() {
 
       {/* AI Chatbot Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>AI Support Chatbot</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>AI Support Chatbot</Text>
+          <Text style={styles.chatSubtitle}>Powered by Google AI</Text>
+        </View>
         <View style={styles.chatContainer}>
           <ScrollView style={styles.chatHistory} showsVerticalScrollIndicator={false}>
             {chatHistory.map((message) => (
@@ -726,20 +750,50 @@ export default function AssistiveScreen() {
                 <Text style={styles.messageTime}>{message.timestamp}</Text>
               </View>
             ))}
+            {isChatLoading && (
+              <View style={[styles.messageContainer, styles.botMessage]}>
+                <View style={styles.typingIndicator}>
+                  <ActivityIndicator size="small" color="#007AFF" />
+                  <Text style={styles.typingText}>AI is thinking...</Text>
+                </View>
+                <Text style={styles.messageTime}>{new Date().toLocaleTimeString()}</Text>
+              </View>
+            )}
           </ScrollView>
           <View style={styles.chatInputContainer}>
-            <TextInput
-              style={styles.chatInput}
-              placeholder="Ask about disabilities or mental health..."
-              value={chatbotMessage}
-              onChangeText={setChatbotMessage}
-              placeholderTextColor="#8E8E93"
-            />
+            <View style={styles.chatInputWrapper}>
+              <TextInput
+                style={styles.chatInput}
+                placeholder="Ask about disabilities or mental health..."
+                value={chatbotMessage}
+                onChangeText={setChatbotMessage}
+                placeholderTextColor="#8E8E93"
+                multiline
+                maxLength={500}
+                editable={!isChatLoading}
+                onSubmitEditing={handleSendMessage}
+                returnKeyType="send"
+                blurOnSubmit={false}
+              />
+              {chatbotMessage.length > 0 && (
+                <Text style={styles.chatCharacterCount}>
+                  {chatbotMessage.length}/500
+                </Text>
+              )}
+            </View>
             <TouchableOpacity
-              style={styles.sendButton}
+              style={[
+                styles.sendButton,
+                (isChatLoading || !chatbotMessage.trim()) && styles.sendButtonDisabled
+              ]}
               onPress={handleSendMessage}
+              disabled={isChatLoading || !chatbotMessage.trim()}
             >
-              <Ionicons name="send" size={20} color="#FFFFFF" />
+              {isChatLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="send" size={20} color="#FFFFFF" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -1202,6 +1256,13 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
     marginBottom: 16,
   },
+  chatSubtitle: {
+    fontSize: 12,
+    color: "#007AFF",
+    fontWeight: "500",
+    marginTop: -12,
+    marginBottom: 16,
+  },
   speechContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -1450,9 +1511,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: "#E5E5EA",
+    backgroundColor: "#FFFFFF",
+  },
+  chatInputWrapper: {
+    flex: 1,
+    marginRight: 8,
   },
   chatInput: {
-    flex: 1,
     borderWidth: 1,
     borderColor: "#E5E5EA",
     borderRadius: 20,
@@ -1460,6 +1525,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 14,
     color: "#1A1A1A",
+    backgroundColor: "#F8F9FA",
+    minHeight: 40,
+    maxHeight: 100,
+  },
+  chatCharacterCount: {
+    fontSize: 12,
+    color: "#8E8E93",
+    textAlign: "right",
+    marginTop: 4,
     marginRight: 8,
   },
   sendButton: {
@@ -1469,6 +1543,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
+  },
+  sendButtonDisabled: {
+    backgroundColor: "#8E8E93",
+    opacity: 0.6,
+  },
+  typingIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  typingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#666666",
+    fontStyle: "italic",
   },
   tipCard: {
     flexDirection: "row",
