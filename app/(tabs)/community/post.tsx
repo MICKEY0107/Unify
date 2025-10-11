@@ -140,15 +140,13 @@ export default function CommunityPost() {
 
       await mongoDBService.createPost(postData);
       
+      // Navigate back immediately after successful creation
+      router.push('/(tabs)/community');
+      
+      // Show success message after navigation
       Alert.alert(
         "Story Published!",
-        "Your inspiring story has been shared with the community. Thank you for contributing!",
-        [
-          {
-            text: "OK",
-            onPress: () => router.push('/(tabs)/community')
-          }
-        ]
+        "Your inspiring story has been shared with the community. Thank you for contributing!"
       );
     } catch (error) {
       console.error('Error creating post:', error);

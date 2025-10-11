@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Dimensions, Image, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { borderRadius, colors, shadows, spacing, typography } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
+import { likedPostsService } from "../../../services/likedPostsService";
 import { CommunityPost, mongoDBService } from "../../../services/mongoDBService";
 
 const { width } = Dimensions.get("window");
@@ -28,6 +29,43 @@ export default function CommunityList() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+
+  const loadLikedPosts = async () => {
+    try {
+      const liked = await likedPostsService.getLikedPosts();
+      setLikedPosts(new Set(liked));
+    } catch (error) {
+      console.error('Error loading liked posts:', error);
+    }
+  };
+
+  const handleLike = async (postId: string) => {
+    try {
+      const newLikeStatus = await likedPostsService.toggleLike(postId);
+      
+      // Update local state
+      setLikedPosts(prev => {
+        const newSet = new Set(prev);
+        if (newLikeStatus) {
+          newSet.add(postId);
+        } else {
+          newSet.delete(postId);
+        }
+        return newSet;
+      });
+      
+      // Update likes count in database
+      const updatedPost = await mongoDBService.updatePostLikes(postId, newLikeStatus);
+      if (updatedPost) {
+        setPosts(prev => prev.map(post => 
+          post._id === postId ? { ...post, likes: updatedPost.likes } : post
+        ));
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
 
   const loadPosts = async (category?: string) => {
     try {
@@ -57,6 +95,7 @@ export default function CommunityList() {
 
   useEffect(() => {
     loadPosts();
+    loadLikedPosts();
   }, []);
 
   const filteredPosts = posts.filter(post =>
@@ -205,10 +244,17 @@ export default function CommunityList() {
                 <View style={styles.storyContent}>
                   <View style={styles.storyHeader}>
                     <Text style={styles.storyTitle}>{post.title}</Text>
-                    <View style={styles.storyBadge}>
-                      <Ionicons name="heart" size={12} color="#FF6B6B" />
+                    <TouchableOpacity 
+                      style={styles.storyBadge}
+                      onPress={() => handleLike(post._id)}
+                    >
+                      <Ionicons 
+                        name={likedPosts.has(post._id) ? "heart" : "heart-outline"} 
+                        size={12} 
+                        color={likedPosts.has(post._id) ? "#FF6B6B" : "#FF6B6B"} 
+                      />
                       <Text style={styles.storyBadgeText}>{post.likes} likes</Text>
-                    </View>
+                    </TouchableOpacity>
                   </View>
                   
                   {post.subtitle && (
@@ -227,7 +273,10 @@ export default function CommunityList() {
                       <Text style={styles.authorName}>{post.author}</Text>
                     </View>
                     
-                    <TouchableOpacity style={styles.readMoreButton}>
+                    <TouchableOpacity 
+                      style={styles.readMoreButton}
+                      onPress={() => router.push(`/community/read/${post._id}`)}
+                    >
                       <Text style={styles.readMoreText}>Read More</Text>
                       <Ionicons name="arrow-forward" size={16} color={colors.primary} />
                     </TouchableOpacity>
