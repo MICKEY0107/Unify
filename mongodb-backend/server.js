@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 3000;
 const MONGODB_URI = 'mongodb+srv://goraprsggg_db_user:4j75BLsKG1hr7kBg@cluster0.vuklamq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 const DB_NAME = 'unify';
 const COLLECTION_NAME = 'users';
+const POSTS_COLLECTION = 'community_posts';
 
 let db;
 
@@ -124,6 +125,185 @@ app.post('/api/users/check-username', async (req, res) => {
     res.json({ success: true, available: isAvailable });
   } catch (error) {
     console.error('Error checking username:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ===== COMMUNITY POSTS ENDPOINTS =====
+
+// Create new post
+app.post('/api/posts', async (req, res) => {
+  try {
+    const postData = req.body;
+    
+    // Validate required fields
+    if (!postData.title || !postData.content || !postData.author || !postData.authorId || !postData.category) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields: title, content, author, authorId, category' 
+      });
+    }
+    
+    // Set default values
+    postData.createdAt = new Date();
+    postData.updatedAt = new Date();
+    postData.likes = postData.likes || 0;
+    
+    // Ensure content is an array
+    if (typeof postData.content === 'string') {
+      postData.content = [postData.content];
+    }
+
+    const result = await db.collection(POSTS_COLLECTION).insertOne(postData);
+    console.log('✅ Post created successfully:', postData._id, 'by', postData.author);
+    res.json({ success: true, post: postData, insertedId: result.insertedId });
+  } catch (error) {
+    console.error('❌ Error creating post:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get all posts (with optional category filter)
+app.get('/api/posts', async (req, res) => {
+  try {
+    const { category } = req.query;
+    const filter = category ? { category } : {};
+    
+    const posts = await db.collection(POSTS_COLLECTION)
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .toArray();
+    
+    console.log(`Posts fetched: ${posts.length} posts${category ? ` in category: ${category}` : ''}`);
+    res.json({ success: true, posts });
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get specific post by ID
+app.get('/api/posts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await db.collection(POSTS_COLLECTION).findOne({ _id: id });
+    
+    if (post) {
+      console.log('Post found:', id);
+      res.json({ success: true, post });
+    } else {
+      console.log('Post not found:', id);
+      res.json({ success: true, post: null });
+    }
+  } catch (error) {
+    console.error('Error fetching post:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update post likes
+app.put('/api/posts/:id/likes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { increment } = req.body; // true to increment, false to decrement
+    
+    const updateOperation = increment 
+      ? { $inc: { likes: 1 } }
+      : { $inc: { likes: -1 } };
+    
+    const result = await db.collection(POSTS_COLLECTION).findOneAndUpdate(
+      { _id: id },
+      { 
+        ...updateOperation,
+        $set: { updatedAt: new Date() }
+      },
+      { returnDocument: 'after' }
+    );
+
+    if (result.value) {
+      console.log('Post likes updated:', id, 'New likes:', result.value.likes);
+      res.json({ success: true, post: result.value });
+    } else {
+      res.status(404).json({ success: false, error: 'Post not found' });
+    }
+  } catch (error) {
+    console.error('Error updating post likes:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete post (optional - for moderation)
+app.delete('/api/posts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await db.collection(POSTS_COLLECTION).deleteOne({ _id: id });
+
+    if (result.deletedCount > 0) {
+      console.log('Post deleted:', id);
+      res.json({ success: true });
+    } else {
+      res.status(404).json({ success: false, error: 'Post not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get posts statistics (must be before /api/posts/:id)
+app.get('/api/posts/stats', async (req, res) => {
+  try {
+    const totalPosts = await db.collection(POSTS_COLLECTION).countDocuments();
+    
+    const categoryStats = await db.collection(POSTS_COLLECTION).aggregate([
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]).toArray();
+    
+    const totalLikes = await db.collection(POSTS_COLLECTION).aggregate([
+      {
+        $group: {
+          _id: null,
+          totalLikes: { $sum: '$likes' }
+        }
+      }
+    ]).toArray();
+    
+    console.log('Posts statistics requested');
+    res.json({ 
+      success: true, 
+      stats: {
+        totalPosts,
+        totalLikes: totalLikes[0]?.totalLikes || 0,
+        categoryBreakdown: categoryStats
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching posts statistics:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get posts by author
+app.get('/api/posts/author/:authorId', async (req, res) => {
+  try {
+    const { authorId } = req.params;
+    const posts = await db.collection(POSTS_COLLECTION)
+      .find({ authorId })
+      .sort({ createdAt: -1 })
+      .toArray();
+    
+    console.log(`Posts by author ${authorId}: ${posts.length} posts`);
+    res.json({ success: true, posts });
+  } catch (error) {
+    console.error('Error fetching posts by author:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

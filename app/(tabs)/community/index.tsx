@@ -294,9 +294,18 @@ export default function CommunityList() {
                     <View style={styles.storyFooter}>
                       <View style={styles.authorInfo}>
                         <View style={styles.authorAvatar}>
-                          <Ionicons name="person" size={16} color={colors.primary} />
+                          {post.authorProfileImage ? (
+                            <Image 
+                              source={{ uri: post.authorProfileImage }} 
+                              style={styles.authorAvatarImage}
+                            />
+                          ) : (
+                            <Ionicons name="person" size={16} color={colors.primary} />
+                          )}
                         </View>
-                        <Text style={styles.authorName}>{post.author}</Text>
+                        <Text style={styles.authorName}>
+                          {post.authorCustomUsername || post.author}
+                        </Text>
                       </View>
                       
                       <TouchableOpacity 
@@ -565,6 +574,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.sm,
+    overflow: "hidden",
+  },
+  authorAvatarImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   authorName: {
     ...typography.caption,

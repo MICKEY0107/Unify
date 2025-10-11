@@ -152,10 +152,19 @@ export default function CommunityReadById() {
 
           <View style={styles.authorSection}>
             <View style={styles.authorAvatar}>
-              <Ionicons name="person" size={20} color={colors.primary} />
+              {story.authorProfileImage ? (
+                <Image 
+                  source={{ uri: story.authorProfileImage }} 
+                  style={styles.authorAvatarImage}
+                />
+              ) : (
+                <Ionicons name="person" size={20} color={colors.primary} />
+              )}
             </View>
             <View style={styles.authorInfo}>
-              <Text style={styles.authorName}>{story.author}</Text>
+              <Text style={styles.authorName}>
+                {story.authorCustomUsername || story.author}
+              </Text>
               <Text style={styles.publishDate}>{new Date(story.createdAt).toLocaleDateString()}</Text>
             </View>
             <View style={styles.likeSection}>
@@ -354,6 +363,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.md,
+    overflow: "hidden",
+  },
+  authorAvatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   authorInfo: {
     flex: 1,

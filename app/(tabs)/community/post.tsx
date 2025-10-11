@@ -15,7 +15,8 @@ import {
 } from "react-native";
 import { borderRadius, colors, shadows, spacing, typography } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
-import { mongoDBService } from "../../../services/mongoDBService";
+import { imgBBService } from "../../../services/imgBBService";
+import { mongoDBService, UserProfile } from "../../../services/mongoDBService";
 
 const { width } = Dimensions.get("window");
 
@@ -29,12 +30,38 @@ export default function CommunityPost() {
   const [category, setCategory] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authorName, setAuthorName] = useState("");
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (user && user.uid !== 'guest') {
+      loadUserProfile();
+    } else if (user) {
       setAuthorName(user.displayName || user.email || "Anonymous");
     }
   }, [user]);
+
+  const loadUserProfile = async () => {
+    if (!user || user.uid === 'guest') return;
+    
+    try {
+      setIsLoadingProfile(true);
+      const profile = await mongoDBService.getUserByUid(user.uid);
+      if (profile) {
+        setUserProfile(profile);
+        setAuthorName(profile.customUsername || profile.displayName || user.displayName || "Anonymous");
+      } else {
+        // Fallback to auth user data if no profile
+        setAuthorName(user.displayName || user.email || "Anonymous");
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      // Fallback to auth user data on error
+      setAuthorName(user.displayName || user.email || "Anonymous");
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
 
   const categories = [
     "Communication", "Physical & Mobility", "Cognitive & Learning", 
@@ -53,7 +80,7 @@ export default function CommunityPost() {
       }
 
       const res = await ImagePicker.launchImageLibraryAsync({ 
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+        mediaTypes: ['images'], 
         quality: 0.8,
         allowsEditing: true,
         aspect: [16, 9]
@@ -125,16 +152,33 @@ export default function CommunityPost() {
     setIsSubmitting(true);
     
     try {
+      // Upload image if provided (mirror profile logic)
+      let imageUrl = image;
+      if (image && !image.startsWith('http')) {
+        try {
+          console.log('Uploading cover image to ImgBB...');
+          imageUrl = await imgBBService.uploadImageFromUri(image);
+          console.log('Cover image uploaded successfully:', imageUrl);
+        } catch (uploadError) {
+          console.error('Error uploading cover image:', uploadError);
+          Alert.alert('Upload Error', 'Failed to upload cover image. Post will be created without image.');
+          imageUrl = null;
+        }
+      }
+
       // Split body into paragraphs
       const content = body.trim().split('\n').filter(paragraph => paragraph.trim().length > 0);
       
       const postData = {
+        _id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: title.trim(),
         subtitle: subtitle.trim() || undefined,
         content,
-        image: image || undefined,
-        author: authorName,
+        image: imageUrl || undefined,
+        author: userProfile?.customUsername || authorName,
         authorId: user.uid,
+        authorCustomUsername: userProfile?.customUsername,
+        authorProfileImage: userProfile?.profileImageUrl,
         category,
       };
 

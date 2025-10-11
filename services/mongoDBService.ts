@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // MongoDB REST API configuration
 const API_BASE_URL = 'http://localhost:3000'; // Replace with your deployed API URL
-const FALLBACK_TO_LOCAL = true; // Use local storage as fallback
+const FALLBACK_TO_LOCAL = false; // Use MongoDB Atlas as primary, local storage only for offline
 
 export interface UserProfile {
   uid: string;
@@ -23,6 +23,8 @@ export interface CommunityPost {
   image?: string;
   author: string;
   authorId: string;
+  authorCustomUsername?: string;
+  authorProfileImage?: string;
   category: string;
   likes: number;
   createdAt: Date;
