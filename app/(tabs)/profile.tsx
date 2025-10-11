@@ -34,7 +34,7 @@ export default function ProfileScreen() {
 
   const loadUserProfile = async () => {
     if (!user || user.uid === 'guest') return;
-    
+
     try {
       setIsLoading(true);
       const profile = await mongoDBService.getUserByUid(user.uid);
@@ -48,7 +48,7 @@ export default function ProfileScreen() {
           uid: user.uid,
           email: user.email || '',
           displayName: user.displayName || '',
-          photoURL: user.photoURL,
+          photoURL: user.photoURL || undefined,
         });
         setUserProfile(newProfile);
         setEditUsername(newProfile.customUsername || newProfile.displayName || '');
@@ -99,7 +99,7 @@ export default function ProfileScreen() {
   const handleImagePicker = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -157,7 +157,7 @@ export default function ProfileScreen() {
       // Update user profile
       const updatedProfile = await mongoDBService.updateUser(user.uid, {
         customUsername: editUsername.trim(),
-        profileImageUrl: imageUrl,
+        profileImageUrl: imageUrl || undefined,
       });
 
       if (updatedProfile) {
@@ -193,18 +193,18 @@ export default function ProfileScreen() {
       <View style={styles.userCard}>
         <View style={styles.avatarContainer}>
           {userProfile?.profileImageUrl || user?.photoURL ? (
-            <Image source={{ uri: userProfile?.profileImageUrl || user?.photoURL }} style={styles.avatar} />
+            <Image source={{ uri: userProfile?.profileImageUrl || user?.photoURL || undefined }} style={styles.avatar} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <Ionicons 
-                name={isGuest ? "person-outline" : "person"} 
-                size={40} 
-                color="#007AFF" 
+              <Ionicons
+                name={isGuest ? "person-outline" : "person"}
+                size={40}
+                color="#007AFF"
               />
             </View>
           )}
         </View>
-        
+
         <View style={styles.userInfo}>
           <Text style={styles.userName}>
             {userProfile?.customUsername || user?.displayName || 'Guest User'}
@@ -224,7 +224,7 @@ export default function ProfileScreen() {
       {/* Menu Items */}
       <View style={styles.menuSection}>
         <Text style={styles.sectionTitle}>Account</Text>
-        
+
         <TouchableOpacity style={styles.menuItem} onPress={handleEditProfile}>
           <View style={styles.menuItemLeft}>
             <Ionicons name="person-outline" size={24} color="#007AFF" />
@@ -247,8 +247,8 @@ export default function ProfileScreen() {
       {/* Guest Sign In Option */}
       {isGuest && (
         <View style={styles.signOutSection}>
-          <TouchableOpacity 
-            style={styles.signInButton} 
+          <TouchableOpacity
+            style={styles.signInButton}
             onPress={() => router.push('/login')}
           >
             <Ionicons name="log-in-outline" size={24} color="#007AFF" />
