@@ -12,6 +12,7 @@ The Unify app now includes a live AI chatbot powered by Google's Gemini AI model
   - Character counter (500 character limit)
   - Disabled send button when loading
   - Typing indicator
+  - **Markdown Support**: Rich text formatting for AI responses
 
 ## Technical Implementation
 

@@ -149,6 +149,7 @@ export default function MarkdownText({ children, style, baseTextStyle }: Markdow
             key={index}
             style={[
               styles.text,
+              baseTextStyle,
               styles.header,
               element.level === 1 && styles.header1,
               element.level === 2 && styles.header2,
@@ -162,7 +163,7 @@ export default function MarkdownText({ children, style, baseTextStyle }: Markdow
         
       case 'bold':
         return (
-          <Text key={index} style={[styles.text, styles.bold, style]}>
+          <Text key={index} style={[styles.text, baseTextStyle, styles.bold, style]}>
             {element.content}
           </Text>
         );

@@ -748,7 +748,7 @@ export default function AssistiveScreen() {
                 ]}
               >
                 {message.type === "bot" ? (
-                  <MarkdownText style={styles.messageText}>{message.message}</MarkdownText>
+                  <MarkdownText baseTextStyle={styles.messageText}>{message.message}</MarkdownText>
                 ) : (
                   <Text style={styles.messageText}>{message.message}</Text>
                 )}
