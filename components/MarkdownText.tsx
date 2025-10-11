@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 interface MarkdownTextProps {
   children: string;
   style?: any;
+  baseTextStyle?: any;
 }
 
 interface ParsedElement {
@@ -12,7 +13,7 @@ interface ParsedElement {
   level?: number; // for headers and bullet indentation
 }
 
-export default function MarkdownText({ children, style }: MarkdownTextProps) {
+export default function MarkdownText({ children, style, baseTextStyle }: MarkdownTextProps) {
   const parseMarkdown = (text: string): ParsedElement[] => {
     const elements: ParsedElement[] = [];
     const lines = text.split('\n');
@@ -301,6 +302,29 @@ const styles = StyleSheet.create({
   bulletText: {
     flex: 1,
     color: '#1A1A1A',
+  },
+  inlineCode: {
+    fontFamily: 'monospace',
+    backgroundColor: '#F0F0F0',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 3,
+    fontSize: 13,
+    color: '#D63384',
+  },
+  codeBlock: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 6,
+    padding: 12,
+    marginVertical: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+  },
+  codeBlockText: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    color: '#495057',
+    lineHeight: 18,
   },
   newline: {
     height: 4,
