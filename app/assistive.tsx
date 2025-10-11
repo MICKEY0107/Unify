@@ -2,17 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  InteractionManager,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    InteractionManager,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import MarkdownText from "../components/MarkdownText";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
@@ -225,56 +225,6 @@ export default function AssistiveScreen() {
     }
   }, [error]);
 
-  const assistiveTools = [
-    {
-      id: 1,
-      title: "Text-to-Speech",
-      description: "Convert text to spoken audio",
-      icon: "volume-high-outline",
-      color: "#4CAF50",
-      action: "speech",
-    },
-    {
-      id: 2,
-      title: "Sign-to-Speech",
-      description: "Translate sign language to text",
-      icon: "hand-left-outline",
-      color: "#FF9800",
-      action: "sign",
-    },
-    {
-      id: 3,
-      title: "AI Chatbot",
-      description: "Get answers about disabilities",
-      icon: "chatbubble-outline",
-      color: "#2196F3",
-      action: "chatbot",
-    },
-    {
-      id: 4,
-      title: "Accessibility Checker",
-      description: "Check content accessibility",
-      icon: "checkmark-circle-outline",
-      color: "#9C27B0",
-      action: "checker",
-    },
-    {
-      id: 5,
-      title: "Voice Commands",
-      description: "Control app with voice",
-      icon: "mic-outline",
-      color: "#F44336",
-      action: "voice",
-    },
-    {
-      id: 6,
-      title: "Magnifier",
-      description: "Zoom in on text and images",
-      icon: "search-outline",
-      color: "#607D8B",
-      action: "magnifier",
-    },
-  ];
 
   const quickTips = [
     {
@@ -429,28 +379,6 @@ export default function AssistiveScreen() {
     );
   };
 
-  const handleToolPress = (tool: any) => {
-    switch (tool.action) {
-      case "speech":
-        // TTS is now handled by the main TTS section
-        break;
-      case "sign":
-        Alert.alert("Sign-to-Speech", "This feature will translate sign language gestures to text. (Demo mode)");
-        break;
-      case "chatbot":
-        // Chatbot is handled in the chat section
-        break;
-      case "checker":
-        Alert.alert("Accessibility Checker", "This feature will analyze content for accessibility issues. (Demo mode)");
-        break;
-      case "voice":
-        Alert.alert("Voice Commands", "This feature allows voice control of the app. (Demo mode)");
-        break;
-      case "magnifier":
-        Alert.alert("Magnifier", "This feature will magnify text and images. (Demo mode)");
-        break;
-    }
-  };
 
   const handleSendMessage = async () => {
     if (chatbotMessage.trim() && !isChatLoading) {
@@ -711,25 +639,6 @@ export default function AssistiveScreen() {
         </View>
       </View>
 
-      {/* Assistive Tools Grid */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Available Tools</Text>
-        <View style={styles.toolsGrid}>
-          {assistiveTools.map((tool) => (
-            <TouchableOpacity
-              key={tool.id}
-              style={styles.toolCard}
-              onPress={() => handleToolPress(tool)}
-            >
-              <View style={[styles.toolIcon, { backgroundColor: tool.color + "20" }]}>
-                <Ionicons name={tool.icon as any} size={24} color={tool.color} />
-              </View>
-              <Text style={styles.toolTitle}>{tool.title}</Text>
-              <Text style={styles.toolDescription}>{tool.description}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
 
       {/* AI Chatbot Section */}
       <View style={styles.section}>
@@ -1423,48 +1332,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#007AFF",
     fontWeight: "500",
-  },
-  toolsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  toolCard: {
-    width: (width - 60) / 2,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  toolIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  toolTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  toolDescription: {
-    fontSize: 12,
-    color: "#666666",
-    textAlign: "center",
-    lineHeight: 16,
   },
   chatContainer: {
     backgroundColor: "#FFFFFF",

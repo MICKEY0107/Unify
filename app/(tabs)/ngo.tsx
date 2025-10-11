@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
+    Alert,
     Dimensions,
+    Linking,
     ScrollView,
     StyleSheet,
     Text,
@@ -28,80 +30,158 @@ export default function NGOScreen() {
   const ngoOrganizations = [
     {
       id: 1,
-      name: "Accessible India Foundation",
-      description: "Comprehensive support for accessibility and inclusion",
-      category: "all",
+      name: "National Association of the Blind (NAB)",
+      description: "Leading organization for visually impaired persons in India",
+      category: "visual",
       location: "New Delhi, India",
       rating: 4.8,
-      reviews: 124,
-      services: ["Accessibility Audits", "Training", "Advocacy"],
-      contact: "+91 11 2345 6789",
-      website: "www.accessibleindia.org",
+      reviews: 324,
+      services: ["Braille Training", "Computer Training", "Employment Support", "Rehabilitation"],
+      contact: "+91 11 2436 6500",
+      website: "www.nabindia.org",
       verified: true,
     },
     {
       id: 2,
-      name: "National Association of the Deaf",
-      description: "Supporting deaf and hard-of-hearing community",
+      name: "All India Institute of Speech and Hearing (AIISH)",
+      description: "Premier institute for hearing and speech disorders",
       category: "hearing",
-      location: "Mumbai, India",
-      rating: 4.6,
-      reviews: 89,
-      services: ["Sign Language Training", "Employment Support", "Legal Aid"],
-      contact: "+91 22 9876 5432",
-      website: "www.nadindia.org",
+      location: "Mysore, Karnataka",
+      rating: 4.9,
+      reviews: 456,
+      services: ["Hearing Assessment", "Speech Therapy", "Cochlear Implant", "Research"],
+      contact: "+91 821 251 4444",
+      website: "www.aiishmysore.in",
       verified: true,
     },
     {
       id: 3,
-      name: "Blind Relief Association",
-      description: "Empowering visually impaired individuals",
-      category: "visual",
-      location: "Bangalore, India",
+      name: "Spastics Society of India",
+      description: "Comprehensive support for cerebral palsy and developmental disabilities",
+      category: "mobility",
+      location: "Mumbai, Maharashtra",
       rating: 4.7,
-      reviews: 156,
-      services: ["Braille Training", "Mobility Training", "Technology Support"],
-      contact: "+91 80 1234 5678",
-      website: "www.blindrelief.org",
+      reviews: 289,
+      services: ["Physiotherapy", "Occupational Therapy", "Special Education", "Parent Training"],
+      contact: "+91 22 2402 8888",
+      website: "www.spasticssocietyofindia.org",
       verified: true,
     },
     {
       id: 4,
-      name: "Wheelchair Foundation India",
-      description: "Mobility solutions and support services",
-      category: "mobility",
-      location: "Chennai, India",
-      rating: 4.5,
-      reviews: 67,
-      services: ["Wheelchair Distribution", "Repair Services", "Training"],
-      contact: "+91 44 8765 4321",
-      website: "www.wheelchairindia.org",
-      verified: false,
+      name: "Action for Autism (AFA)",
+      description: "Supporting individuals with autism spectrum disorders",
+      category: "cognitive",
+      location: "New Delhi, India",
+      rating: 4.6,
+      reviews: 198,
+      services: ["Early Intervention", "Behavioral Therapy", "Parent Support", "Training Programs"],
+      contact: "+91 11 4054 0991",
+      website: "www.actionforautism.org",
+      verified: true,
     },
     {
       id: 5,
-      name: "Autism Society of India",
-      description: "Supporting individuals with autism and their families",
-      category: "cognitive",
-      location: "Pune, India",
-      rating: 4.9,
-      reviews: 203,
-      services: ["Early Intervention", "Therapy", "Parent Support"],
-      contact: "+91 20 3456 7890",
-      website: "www.autismindia.org",
+      name: "Indian Spinal Injuries Centre (ISIC)",
+      description: "Comprehensive rehabilitation for spinal cord injuries",
+      category: "mobility",
+      location: "New Delhi, India",
+      rating: 4.8,
+      reviews: 312,
+      services: ["Spinal Rehabilitation", "Wheelchair Services", "Vocational Training", "Research"],
+      contact: "+91 11 4225 5225",
+      website: "www.isiconline.org",
       verified: true,
     },
     {
       id: 6,
-      name: "Spinal Cord Injury Foundation",
-      description: "Rehabilitation and support for spinal cord injuries",
-      category: "mobility",
-      location: "Hyderabad, India",
+      name: "National Institute for the Mentally Handicapped (NIMH)",
+      description: "Research and training for intellectual disabilities",
+      category: "cognitive",
+      location: "Secunderabad, Telangana",
+      rating: 4.5,
+      reviews: 167,
+      services: ["Assessment", "Training Programs", "Research", "Community Services"],
+      contact: "+91 40 2775 5500",
+      website: "www.nimhindia.org",
+      verified: true,
+    },
+    {
+      id: 7,
+      name: "Hearing Impaired Foundation (HIF)",
+      description: "Empowering deaf and hard-of-hearing community",
+      category: "hearing",
+      location: "Bangalore, Karnataka",
       rating: 4.4,
-      reviews: 45,
-      services: ["Rehabilitation", "Counseling", "Equipment Support"],
-      contact: "+91 40 5678 9012",
-      website: "www.sciindia.org",
+      reviews: 134,
+      services: ["Sign Language Training", "Hearing Aid Support", "Education", "Employment"],
+      contact: "+91 80 2559 3333",
+      website: "www.hearingimpairedfoundation.org",
+      verified: true,
+    },
+    {
+      id: 8,
+      name: "Blind People's Association (BPA)",
+      description: "Comprehensive services for visually impaired persons",
+      category: "visual",
+      location: "Ahmedabad, Gujarat",
+      rating: 4.7,
+      reviews: 245,
+      services: ["Education", "Rehabilitation", "Employment", "Technology Training"],
+      contact: "+91 79 2755 5555",
+      website: "www.bpaindia.org",
+      verified: true,
+    },
+    {
+      id: 9,
+      name: "Association of People with Disability (APD)",
+      description: "Holistic development of persons with disabilities",
+      category: "all",
+      location: "Bangalore, Karnataka",
+      rating: 4.6,
+      reviews: 278,
+      services: ["Education", "Healthcare", "Livelihood", "Advocacy"],
+      contact: "+91 80 2549 7000",
+      website: "www.apd-india.org",
+      verified: true,
+    },
+    {
+      id: 10,
+      name: "Cheshire Home India",
+      description: "Rehabilitation and independent living for persons with disabilities",
+      category: "mobility",
+      location: "Multiple Locations",
+      rating: 4.5,
+      reviews: 189,
+      services: ["Rehabilitation", "Independent Living", "Vocational Training", "Community Support"],
+      contact: "+91 11 2371 2000",
+      website: "www.cheshirehomeindia.org",
+      verified: true,
+    },
+    {
+      id: 11,
+      name: "Down Syndrome Federation of India (DSFI)",
+      description: "Supporting individuals with Down syndrome and their families",
+      category: "cognitive",
+      location: "Chennai, Tamil Nadu",
+      rating: 4.8,
+      reviews: 156,
+      services: ["Early Intervention", "Education", "Therapy", "Family Support"],
+      contact: "+91 44 2495 5555",
+      website: "www.downsyndromeindia.org",
+      verified: true,
+    },
+    {
+      id: 12,
+      name: "National Centre for Promotion of Employment for Disabled People (NCPEDP)",
+      description: "Employment and economic empowerment for persons with disabilities",
+      category: "all",
+      location: "New Delhi, India",
+      rating: 4.7,
+      reviews: 203,
+      services: ["Employment Support", "Skill Development", "Policy Advocacy", "Research"],
+      contact: "+91 11 2649 7000",
+      website: "www.ncpedp.org",
       verified: true,
     },
   ];
@@ -117,6 +197,59 @@ export default function NGOScreen() {
     if (rating >= 4.5) return "#4CAF50";
     if (rating >= 4.0) return "#FF9800";
     return "#FF6B6B";
+  };
+
+  const handleWebsitePress = async (website: string) => {
+    try {
+      // Ensure the URL has a protocol
+      const url = website.startsWith('http') ? website : `https://${website}`;
+      
+      // Check if the URL can be opened
+      const supported = await Linking.canOpenURL(url);
+      
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert(
+          "Cannot Open Website",
+          "Unable to open the website. Please check the URL or try again later.",
+          [{ text: "OK" }]
+        );
+      }
+    } catch (error) {
+      console.error('Error opening website:', error);
+      Alert.alert(
+        "Error",
+        "Failed to open the website. Please try again later.",
+        [{ text: "OK" }]
+      );
+    }
+  };
+
+  const handleContactPress = (contact: string) => {
+    const phoneNumber = contact.replace(/\s/g, ''); // Remove spaces
+    const url = `tel:${phoneNumber}`;
+    
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          Alert.alert(
+            "Cannot Make Call",
+            "Unable to make a phone call. Please copy the number and call manually.",
+            [{ text: "OK" }]
+          );
+        }
+      })
+      .catch((error) => {
+        console.error('Error opening phone dialer:', error);
+        Alert.alert(
+          "Error",
+          "Failed to open phone dialer. Please try again later.",
+          [{ text: "OK" }]
+        );
+      });
   };
 
   return (
@@ -216,22 +349,50 @@ export default function NGOScreen() {
             </View>
 
             <View style={styles.contactContainer}>
-              <View style={styles.contactItem}>
+              <TouchableOpacity 
+                style={styles.contactItem}
+                onPress={() => handleContactPress(ngo.contact)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Call ${ngo.contact}`}
+                accessibilityHint="Opens phone dialer to call this organization"
+              >
                 <Ionicons name="call-outline" size={16} color="#007AFF" />
                 <Text style={styles.contactText}>{ngo.contact}</Text>
-              </View>
-              <View style={styles.contactItem}>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.contactItem}
+                onPress={() => handleWebsitePress(ngo.website)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Visit ${ngo.website}`}
+                accessibilityHint="Opens the organization's website in your browser"
+              >
                 <Ionicons name="globe-outline" size={16} color="#007AFF" />
                 <Text style={styles.contactText}>{ngo.website}</Text>
-              </View>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.ngoActions}>
-              <TouchableOpacity style={styles.contactButton}>
+              <TouchableOpacity 
+                style={styles.contactButton}
+                onPress={() => handleContactPress(ngo.contact)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Call ${ngo.name} at ${ngo.contact}`}
+                accessibilityHint="Opens phone dialer to call this organization"
+              >
                 <Ionicons name="call" size={16} color="#FFFFFF" />
                 <Text style={styles.contactButtonText}>Contact</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.websiteButton}>
+              <TouchableOpacity 
+                style={styles.websiteButton}
+                onPress={() => handleWebsitePress(ngo.website)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`Visit ${ngo.name} website`}
+                accessibilityHint="Opens the organization's website in your browser"
+              >
                 <Ionicons name="globe" size={16} color="#007AFF" />
                 <Text style={styles.websiteButtonText}>Website</Text>
               </TouchableOpacity>

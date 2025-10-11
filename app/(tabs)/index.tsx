@@ -61,24 +61,24 @@ export default function HomeScreen() {
   const   quickActions = [
     {
       id: 1,
-      title: "Behavioral Tips",
-      description: "Learn respectful interaction guidelines",
-      icon: "bulb-outline",
+      title: "ChatBot Support",
+      description: "Get AI-powered assistance and support",
+      icon: "chatbubble-ellipses-outline",
       color: "#D4A574", // Warm golden brown
       gradient: ["#D4A574", "#E6B885"],
     },
     {
       id: 2,
-      title: "Sign Language",
-      description: "Start learning Indian Sign Language",
-      icon: "hand-left-outline",
+      title: "Text to Speech Tool",
+      description: "Convert text to speech for better accessibility",
+      icon: "volume-high-outline",
       color: "#8FBC8F", // Sage green
       gradient: ["#8FBC8F", "#A5C9A5"],
     },
     {
       id: 3,
       title: "Communication",
-      description: "Improve inclusive communication",
+      description: "Connect with the community",
       icon: "chatbubbles-outline",
       color: "#87CEEB", // Sky blue
       gradient: ["#87CEEB", "#9DD4F0"],
@@ -239,6 +239,24 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={action.id}
               style={[styles.actionCard, { borderLeftColor: action.color }]}
+              onPress={() => {
+                switch (action.id) {
+                  case 1: // ChatBot Support
+                    router.push('/(tabs)/assistive');
+                    break;
+                  case 2: // Text to Speech Tool
+                    router.push('/(tabs)/assistive');
+                    break;
+                  case 3: // Communication
+                    router.push('/(tabs)/community');
+                    break;
+                  case 4: // Find Support
+                    router.push('/(tabs)/ngo');
+                    break;
+                  default:
+                    break;
+                }
+              }}
             >
               <View style={styles.actionIcon}>
                 <Ionicons name={action.icon as any} size={24} color={action.color} />
