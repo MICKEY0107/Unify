@@ -3,16 +3,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { imgBBService } from '../../services/imgBBService';
@@ -80,7 +80,7 @@ export default function ProfileScreen() {
               router.replace('/login');
             } catch (error) {
               console.error('Sign out error:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
+              router.replace('/login'); // Redirect to login even on error
             }
           },
         },
@@ -117,12 +117,15 @@ export default function ProfileScreen() {
   const handleSaveProfile = async () => {
     if (!user || user.uid === 'guest') return;
 
+    let shouldCloseModal = false;
+
     try {
       setIsLoading(true);
 
       // Validate username
       if (!editUsername.trim()) {
         Alert.alert('Error', 'Username cannot be empty');
+        shouldCloseModal = true;
         return;
       }
 
@@ -134,6 +137,7 @@ export default function ProfileScreen() {
 
       if (!isAvailable) {
         Alert.alert('Error', 'Username is already taken');
+        shouldCloseModal = true;
         return;
       }
 
@@ -158,14 +162,18 @@ export default function ProfileScreen() {
 
       if (updatedProfile) {
         setUserProfile(updatedProfile);
-        setIsEditModalVisible(false);
         Alert.alert('Success', 'Profile updated successfully');
       }
+      shouldCloseModal = true;
     } catch (error) {
       console.error('Error saving profile:', error);
       Alert.alert('Error', 'Failed to save profile');
+      shouldCloseModal = true;
     } finally {
       setIsLoading(false);
+      if (shouldCloseModal) {
+        setIsEditModalVisible(false);
+      }
     }
   };
 
