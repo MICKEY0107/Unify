@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import MarkdownText from "../components/MarkdownText";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { googleAIService } from "../services/googleAIService";
 import { FavoriteText } from "../services/storageService";
@@ -746,7 +747,11 @@ export default function AssistiveScreen() {
                   message.type === "user" ? styles.userMessage : styles.botMessage,
                 ]}
               >
-                <Text style={styles.messageText}>{message.message}</Text>
+                {message.type === "bot" ? (
+                  <MarkdownText style={styles.messageText}>{message.message}</MarkdownText>
+                ) : (
+                  <Text style={styles.messageText}>{message.message}</Text>
+                )}
                 <Text style={styles.messageTime}>{message.timestamp}</Text>
               </View>
             ))}
