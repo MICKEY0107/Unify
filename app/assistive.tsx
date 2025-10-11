@@ -2,17 +2,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    InteractionManager,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  InteractionManager,
+  Linking,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import MarkdownText from "../components/MarkdownText";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
@@ -58,6 +60,17 @@ export default function AssistiveScreen() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [favoriteTitle, setFavoriteTitle] = useState("");
   const [showSaveFavorite, setShowSaveFavorite] = useState(false);
+
+  // SOS Emergency functionality
+  const [showSOSModal, setShowSOSModal] = useState(false);
+  const [sosCountdown, setSosCountdown] = useState(5);
+  const [sosTimer, setSosTimer] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [sosNumber, setSosNumber] = useState("9315274121"); // Default SOS number
+  const [showSOSSettings, setShowSOSSettings] = useState(false);
+  const [newSOSNumber, setNewSOSNumber] = useState("");
+  const [isSavingSOS, setIsSavingSOS] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
   // Voice filtering state
   const [voiceSearchQuery, setVoiceSearchQuery] = useState("");
@@ -425,6 +438,148 @@ export default function AssistiveScreen() {
     }
   };
 
+  // SOS Emergency functions
+  const handleNationalHelplinePress = () => {
+    setShowSOSModal(true);
+    setSosCountdown(5);
+    
+    // Animate modal appearance
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Start countdown timer
+    const timer = setInterval(() => {
+      setSosCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleSOSCall();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    setSosTimer(timer);
+  };
+
+  const handleSOSCall = async () => {
+    try {
+      const phoneNumber = sosNumber;
+      const url = `tel:${phoneNumber}`;
+      
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert(
+          "Cannot Make Call",
+          `Unable to make a phone call. Please dial ${phoneNumber} manually.`,
+          [{ text: "OK" }]
+        );
+      }
+    } catch (error) {
+      console.error('Error making SOS call:', error);
+      Alert.alert(
+        "Error",
+        `Failed to make the call. Please dial ${sosNumber} manually.`,
+        [{ text: "OK" }]
+      );
+    } finally {
+      handleCancelSOS();
+    }
+  };
+
+  const handleCancelSOS = () => {
+    if (sosTimer) {
+      clearInterval(sosTimer);
+      setSosTimer(null);
+    }
+    
+    // Animate modal disappearance
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.8,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowSOSModal(false);
+      setSosCountdown(5);
+    });
+  };
+
+  const handleSOSSettingsPress = () => {
+    setNewSOSNumber(sosNumber);
+    setShowSOSSettings(true);
+  };
+
+  const handleSaveSOSNumber = async () => {
+    if (isSavingSOS) return; // Prevent multiple taps
+    
+    setIsSavingSOS(true);
+    
+    try {
+      const trimmedNumber = newSOSNumber.trim();
+      
+      console.log('Saving SOS number:', trimmedNumber); // Debug log
+      
+      // More comprehensive validation
+      if (trimmedNumber.length < 10) {
+        Alert.alert("Invalid Number", "Please enter a valid phone number (at least 10 digits).");
+        return;
+      }
+      
+      // Check if number contains only digits and common phone characters
+      const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+      if (!phoneRegex.test(trimmedNumber)) {
+        Alert.alert("Invalid Number", "Please enter a valid phone number with only digits, spaces, dashes, parentheses, or plus sign.");
+        return;
+      }
+      
+      // Update the SOS number
+      setSosNumber(trimmedNumber);
+      
+      // Small delay to ensure state update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      setShowSOSSettings(false);
+      setNewSOSNumber("");
+      
+      console.log('SOS number updated successfully:', trimmedNumber); // Debug log
+      
+      // Show success message
+      Alert.alert("Success", `SOS number updated to ${trimmedNumber}!`, [
+        { text: "OK", style: "default" }
+      ]);
+    } catch (error) {
+      console.error('Error saving SOS number:', error);
+      Alert.alert("Error", "Failed to save SOS number. Please try again.");
+    } finally {
+      setIsSavingSOS(false);
+    }
+  };
+
+  const handleCancelSOSSettings = () => {
+    setShowSOSSettings(false);
+    setNewSOSNumber("");
+  };
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
@@ -731,7 +886,19 @@ export default function AssistiveScreen() {
 
       {/* Emergency Resources */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Emergency Resources</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Emergency Resources</Text>
+          <TouchableOpacity 
+            style={styles.sosSettingsButton}
+            onPress={handleSOSSettingsPress}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Edit SOS number"
+            accessibilityHint="Opens settings to change your emergency contact number"
+          >
+            <Ionicons name="settings-outline" size={20} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
         <View style={styles.emergencyCard}>
           <View style={styles.emergencyHeader}>
             <Ionicons name="call" size={24} color="#F44336" />
@@ -741,8 +908,15 @@ export default function AssistiveScreen() {
             If you or someone you know is in crisis, please reach out to these resources:
           </Text>
           <View style={styles.emergencyNumbers}>
-            <TouchableOpacity style={styles.emergencyButton}>
-              <Text style={styles.emergencyButtonText}>National Helpline: 1800-599-0019</Text>
+            <TouchableOpacity 
+              style={styles.emergencyButton}
+              onPress={handleNationalHelplinePress}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`SOS Emergency - Tap to call ${sosNumber} with countdown`}
+              accessibilityHint="Opens SOS popup with 5-second countdown before calling your emergency contact"
+            >
+              <Text style={styles.emergencyButtonText}>SOS Emergency: {sosNumber}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.emergencyButton}>
               <Text style={styles.emergencyButtonText}>Mental Health: 1800-233-3330</Text>
@@ -1132,6 +1306,174 @@ export default function AssistiveScreen() {
               >
                 <Text style={styles.saveModalSaveText}>Save</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* SOS Emergency Modal */}
+      <Modal
+        visible={showSOSModal}
+        animationType="none"
+        transparent
+        onRequestClose={handleCancelSOS}
+        accessible={true}
+        accessibilityViewIsModal={true}
+      >
+        <Animated.View 
+          style={[
+            styles.sosOverlay,
+            {
+              opacity: fadeAnim,
+            }
+          ]}
+        >
+          <Animated.View 
+            style={[
+              styles.sosModal,
+              {
+                transform: [{ scale: scaleAnim }],
+              }
+            ]}
+          >
+            <View style={styles.sosHeader}>
+              <View style={styles.sosIconContainer}>
+                <Ionicons name="call" size={32} color="#FFFFFF" />
+              </View>
+              <Text style={styles.sosTitle}>Emergency Call</Text>
+              <Text style={styles.sosSubtitle}>
+                Connecting to {sosNumber}
+              </Text>
+            </View>
+
+            <View style={styles.sosCountdownContainer}>
+              <Text style={styles.sosCountdownLabel}>Calling in:</Text>
+              <Text style={styles.sosCountdownNumber}>{sosCountdown}</Text>
+              <Text style={styles.sosCountdownUnit}>seconds</Text>
+            </View>
+
+            <View style={styles.sosProgressContainer}>
+              <View 
+                style={[
+                  styles.sosProgressBar,
+                  { width: `${((5 - sosCountdown) / 5) * 100}%` }
+                ]} 
+              />
+            </View>
+
+            <View style={styles.sosButtonsContainer}>
+              <TouchableOpacity 
+                style={styles.sosCancelButton}
+                onPress={handleCancelSOS}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel emergency call"
+                accessibilityHint="Cancels the emergency call and closes this popup"
+              >
+                <Ionicons name="close" size={20} color="#666666" />
+                <Text style={styles.sosCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.sosCallNowButton}
+                onPress={handleSOSCall}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Call now"
+                accessibilityHint="Immediately calls the National Helpline"
+              >
+                <Ionicons name="call" size={20} color="#FFFFFF" />
+                <Text style={styles.sosCallNowButtonText}>Call Now</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.sosHelpText}>
+              If you need immediate help, you can also dial {sosNumber} directly.
+            </Text>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
+
+      {/* SOS Settings Modal */}
+      <Modal
+        visible={showSOSSettings}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleCancelSOSSettings}
+        accessible={true}
+        accessibilityViewIsModal={true}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>SOS Emergency Settings</Text>
+            <TouchableOpacity
+              onPress={handleCancelSOSSettings}
+              style={styles.modalCloseButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Close SOS settings"
+              accessibilityHint="Close the SOS settings panel"
+            >
+              <Ionicons name="close" size={24} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <View style={styles.sosSettingsSection}>
+              <Text style={styles.sosSettingsTitle}>Emergency Contact Number</Text>
+              <Text style={styles.sosSettingsDescription}>
+                Set your emergency contact number for SOS calls. This number will be called when you use the emergency feature.
+              </Text>
+              
+              <View style={styles.sosInputContainer}>
+                <Text style={styles.sosInputLabel}>Phone Number:</Text>
+                <TextInput
+                  style={styles.sosInput}
+                  placeholder="Enter emergency contact number"
+                  value={newSOSNumber}
+                  onChangeText={setNewSOSNumber}
+                  keyboardType="phone-pad"
+                  maxLength={15}
+                  placeholderTextColor="#8E8E93"
+                  accessible={true}
+                  accessibilityLabel="Emergency contact number input"
+                  accessibilityHint="Enter the phone number for emergency calls"
+                />
+                <Text style={styles.sosInputHint}>
+                  Current: {sosNumber}
+                </Text>
+              </View>
+
+              <View style={styles.sosSettingsButtons}>
+                <TouchableOpacity
+                  style={styles.sosCancelSettingsButton}
+                  onPress={handleCancelSOSSettings}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel changes"
+                >
+                  <Text style={styles.sosCancelSettingsText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[
+                    styles.sosSaveSettingsButton,
+                    isSavingSOS && styles.sosSaveSettingsButtonDisabled
+                  ]}
+                  onPress={handleSaveSOSNumber}
+                  disabled={isSavingSOS}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={isSavingSOS ? "Saving SOS number" : "Save SOS number"}
+                  accessibilityState={{ disabled: isSavingSOS }}
+                >
+                  {isSavingSOS ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.sosSaveSettingsText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
@@ -1846,6 +2188,231 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveModalSaveText: {
+    fontSize: 16,
+    color: "#FFFFFF",
+    fontWeight: "500",
+  },
+  // SOS Modal Styles
+  sosOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  sosModal: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  sosHeader: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  sosIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#4CAF50",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    shadowColor: "#4CAF50",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  sosTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  sosSubtitle: {
+    fontSize: 16,
+    color: "#666666",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  sosCountdownContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  sosCountdownLabel: {
+    fontSize: 16,
+    color: "#666666",
+    marginBottom: 8,
+  },
+  sosCountdownNumber: {
+    fontSize: 48,
+    fontWeight: "800",
+    color: "#4CAF50",
+    marginBottom: 4,
+  },
+  sosCountdownUnit: {
+    fontSize: 14,
+    color: "#8E8E93",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  sosProgressContainer: {
+    width: "100%",
+    height: 6,
+    backgroundColor: "#E5E5EA",
+    borderRadius: 3,
+    marginBottom: 32,
+    overflow: "hidden",
+  },
+  sosProgressBar: {
+    height: "100%",
+    backgroundColor: "#4CAF50",
+    borderRadius: 3,
+  },
+  sosButtonsContainer: {
+    flexDirection: "row",
+    width: "100%",
+    gap: 12,
+    marginBottom: 20,
+  },
+  sosCancelButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F5F5F5",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+  },
+  sosCancelButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#666666",
+    fontWeight: "600",
+  },
+  sosCallNowButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#4CAF50",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: "#4CAF50",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sosCallNowButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  sosHelpText: {
+    fontSize: 14,
+    color: "#8E8E93",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  // SOS Settings Styles
+  sosSettingsButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "#F0F0F0",
+  },
+  sosSettingsSection: {
+    marginBottom: 24,
+  },
+  sosSettingsTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    marginBottom: 8,
+  },
+  sosSettingsDescription: {
+    fontSize: 14,
+    color: "#666666",
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  sosInputContainer: {
+    marginBottom: 24,
+  },
+  sosInputLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1A1A1A",
+    marginBottom: 8,
+  },
+  sosInput: {
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: "#1A1A1A",
+    backgroundColor: "#FFFFFF",
+  },
+  sosInputHint: {
+    fontSize: 12,
+    color: "#8E8E93",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+  sosSettingsButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  sosCancelSettingsButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+  },
+  sosCancelSettingsText: {
+    fontSize: 16,
+    color: "#666666",
+    fontWeight: "500",
+  },
+  sosSaveSettingsButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: "#007AFF",
+    alignItems: "center",
+  },
+  sosSaveSettingsButtonDisabled: {
+    backgroundColor: "#8E8E93",
+    opacity: 0.6,
+  },
+  sosSaveSettingsText: {
     fontSize: 16,
     color: "#FFFFFF",
     fontWeight: "500",
