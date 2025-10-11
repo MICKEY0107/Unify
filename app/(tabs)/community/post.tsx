@@ -1,31 +1,40 @@
-import React, { useState } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  Image, 
-  TouchableOpacity, 
-  Alert, 
-  Platform, 
-  ScrollView,
-  Dimensions 
-} from "react-native";
-import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { colors, spacing, borderRadius, typography, shadows } from "../../../constants/theme";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+    Alert,
+    Dimensions,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from "react-native";
+import { borderRadius, colors, shadows, spacing, typography } from "../../../constants/theme";
+import { useAuth } from "../../../contexts/AuthContext";
+import { mongoDBService } from "../../../services/mongoDBService";
 
 const { width } = Dimensions.get("window");
 
 export default function CommunityPost() {
   const router = useRouter();
+  const { user } = useAuth();
   const [image, setImage] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [body, setBody] = useState("");
   const [category, setCategory] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authorName, setAuthorName] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setAuthorName(user.displayName || user.email || "Anonymous");
+    }
+  }, [user]);
 
   const categories = [
     "Communication", "Physical & Mobility", "Cognitive & Learning", 
@@ -103,22 +112,54 @@ export default function CommunityPost() {
       return;
     }
 
+    if (!category) {
+      Alert.alert("Missing Category", "Please select a category for your story.");
+      return;
+    }
+
+    if (!user) {
+      Alert.alert("Authentication Required", "Please sign in to create a post.");
+      return;
+    }
+
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Split body into paragraphs
+      const content = body.trim().split('\n').filter(paragraph => paragraph.trim().length > 0);
+      
+      const postData = {
+        title: title.trim(),
+        subtitle: subtitle.trim() || undefined,
+        content,
+        image: image || undefined,
+        author: authorName,
+        authorId: user.uid,
+        category,
+      };
+
+      await mongoDBService.createPost(postData);
+      
       Alert.alert(
         "Story Published!",
         "Your inspiring story has been shared with the community. Thank you for contributing!",
         [
           {
             text: "OK",
-            onPress: () => router.push('/(tabs)/community') // Navigate back to community page
+            onPress: () => router.push('/(tabs)/community')
           }
         ]
       );
-    }, 2000);
+    } catch (error) {
+      console.error('Error creating post:', error);
+      Alert.alert(
+        "Error",
+        "Failed to publish your story. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isFormValid = title.trim() && body.trim();

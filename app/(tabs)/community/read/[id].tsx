@@ -1,36 +1,88 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import stories from '../communityData';
-import { colors, spacing, borderRadius, typography, shadows } from '../../../../constants/theme';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { borderRadius, colors, shadows, spacing, typography } from '../../../../constants/theme';
+import { likedPostsService } from '../../../../services/likedPostsService';
+import { CommunityPost, mongoDBService } from '../../../../services/mongoDBService';
 
 const { width } = Dimensions.get("window");
 
 export default function CommunityReadById() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const [story, setStory] = useState<CommunityPost | null>(null);
   const [isLiked, setIsLiked] = useState(false);
   const [likes, setLikes] = useState(0);
-  
-  const story = id ? stories.find((s) => s.id === id) : stories[0];
-  
-  // Add debugging
-  console.log('Story ID:', id);
-  console.log('Story found:', !!story);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (story?.likes) {
-      setLikes(story.likes);
+  const loadStory = async () => {
+    if (!id) return;
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      const fetchedStory = await mongoDBService.getPostById(id);
+      
+      if (fetchedStory) {
+        setStory(fetchedStory);
+        setLikes(fetchedStory.likes);
+        
+        // Check if user has liked this post
+        const hasLiked = await likedPostsService.isPostLiked(id);
+        setIsLiked(hasLiked);
+      } else {
+        setError('Story not found');
+      }
+    } catch (err) {
+      console.error('Error loading story:', err);
+      setError('Failed to load story');
+    } finally {
+      setIsLoading(false);
     }
-  }, [story]);
+  };
 
-  if (!story) {
+  useEffect(() => {
+    loadStory();
+  }, [id]);
+
+  const handleLike = async () => {
+    if (!story) return;
+    
+    try {
+      const newLikeStatus = await likedPostsService.toggleLike(story._id);
+      setIsLiked(newLikeStatus);
+      
+      // Update likes count in database
+      const updatedStory = await mongoDBService.updatePostLikes(story._id, newLikeStatus);
+      if (updatedStory) {
+        setLikes(updatedStory.likes);
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      Alert.alert('Error', 'Failed to update like. Please try again.');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="hourglass-outline" size={64} color={colors.primary} />
+          <Text style={styles.loadingTitle}>Loading Story...</Text>
+          <Text style={styles.loadingSubtitle}>Please wait while we fetch the story</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !story) {
     return (
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={64} color={colors.textTertiary} />
         <Text style={styles.errorTitle}>Story Not Found</Text>
-        <Text style={styles.errorSubtitle}>The story you're looking for doesn't exist</Text>
+        <Text style={styles.errorSubtitle}>{error || "The story you're looking for doesn't exist"}</Text>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.back()}
@@ -40,11 +92,6 @@ export default function CommunityReadById() {
       </View>
     );
   }
-
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikes(prev => isLiked ? prev - 1 : prev + 1);
-  };
 
   const handleShare = () => {
     // Share functionality would go here
@@ -65,74 +112,74 @@ export default function CommunityReadById() {
         {/* Hero Image */}
         <View style={styles.heroContainer}>
           <Image 
-            source={story.image ?? require('../../../../assets/images/community - Read.png')} 
+            source={story.image ? { uri: story.image } : require('../../../../assets/images/community - Read.png')} 
             style={styles.heroImage} 
           />
           <View style={styles.heroOverlay}>
-          <View style={styles.heroActions}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-              <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-              <Ionicons 
-                name={isLiked ? "heart" : "heart-outline"} 
-                size={20} 
-                color={isLiked ? "#FF6B6B" : "#FFFFFF"} 
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* Story Content */}
-      <View style={styles.storyContainer}>
-        {/* Header */}
-        <View style={styles.storyHeader}>
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{story.category || "Personal Story"}</Text>
-          </View>
-          <View style={styles.readTimeContainer}>
-            <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.readTime}>{story.readTime || 3} min read</Text>
-          </View>
-        </View>
-
-        {/* Title and Author */}
-        <Text style={styles.title}>{story.title}</Text>
-        {story.subtitle && (
-          <Text style={styles.subtitle}>{story.subtitle}</Text>
-        )}
-
-        <View style={styles.authorSection}>
-          <View style={styles.authorAvatar}>
-            <Ionicons name="person" size={20} color={colors.primary} />
-          </View>
-          <View style={styles.authorInfo}>
-            <Text style={styles.authorName}>{story.author || "Anonymous"}</Text>
-            <Text style={styles.publishDate}>{story.date || "Recently"}</Text>
-          </View>
-          <View style={styles.likeSection}>
-            <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
-              <Ionicons 
-                name={isLiked ? "heart" : "heart-outline"} 
-                size={18} 
-                color={isLiked ? "#FF6B6B" : colors.textSecondary} 
-              />
-              <Text style={[styles.likeCount, { color: isLiked ? "#FF6B6B" : colors.textSecondary }]}>
-                {likes}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.heroActions}>
+              <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+                <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+                <Ionicons 
+                  name={isLiked ? "heart" : "heart-outline"} 
+                  size={20} 
+                  color={isLiked ? "#FF6B6B" : "#FFFFFF"} 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
         {/* Story Content */}
-        <View style={styles.storyContent}>
-          {(story.content || []).map((paragraph, index) => (
-            <Text key={index} style={styles.paragraph}>
-              {paragraph}
-            </Text>
-          ))}
-        </View>
+        <View style={styles.storyContainer}>
+          {/* Header */}
+          <View style={styles.storyHeader}>
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>{story.category}</Text>
+            </View>
+            <View style={styles.readTimeContainer}>
+              <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+              <Text style={styles.readTime}>{Math.ceil(story.content.join(' ').split(' ').length / 200)} min read</Text>
+            </View>
+          </View>
+
+          {/* Title and Author */}
+          <Text style={styles.title}>{story.title}</Text>
+          {story.subtitle && (
+            <Text style={styles.subtitle}>{story.subtitle}</Text>
+          )}
+
+          <View style={styles.authorSection}>
+            <View style={styles.authorAvatar}>
+              <Ionicons name="person" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.authorInfo}>
+              <Text style={styles.authorName}>{story.author}</Text>
+              <Text style={styles.publishDate}>{new Date(story.createdAt).toLocaleDateString()}</Text>
+            </View>
+            <View style={styles.likeSection}>
+              <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
+                <Ionicons 
+                  name={isLiked ? "heart" : "heart-outline"} 
+                  size={18} 
+                  color={isLiked ? "#FF6B6B" : colors.textSecondary} 
+                />
+                <Text style={[styles.likeCount, { color: isLiked ? "#FF6B6B" : colors.textSecondary }]}>
+                  {likes}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Story Content */}
+          <View style={styles.storyContent}>
+            {story.content.map((paragraph, index) => (
+              <Text key={index} style={styles.paragraph}>
+                {paragraph}
+              </Text>
+            ))}
+          </View>
 
         {/* Call to Action */}
         <View style={styles.ctaSection}>
@@ -147,29 +194,13 @@ export default function CommunityReadById() {
           </TouchableOpacity>
         </View>
 
-        {/* Related Stories */}
+        {/* Related Stories - Simplified for now */}
         <View style={styles.relatedSection}>
           <Text style={styles.relatedTitle}>More Inspiring Stories</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {stories
-              .filter(s => s.id !== story.id)
-              .slice(0, 3)
-              .map((relatedStory) => (
-                <TouchableOpacity 
-                  key={relatedStory.id}
-                  style={styles.relatedCard}
-                  onPress={() => router.push(`/(tabs)/community/read/${relatedStory.id}`)}
-                >
-                  <Image source={relatedStory.image} style={styles.relatedImage} />
-                  <View style={styles.relatedContent}>
-                    <Text style={styles.relatedTitle} numberOfLines={2}>
-                      {relatedStory.title}
-                    </Text>
-                    <Text style={styles.relatedAuthor}>{relatedStory.author}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-          </ScrollView>
+          <View style={styles.relatedPlaceholder}>
+            <Ionicons name="book-outline" size={48} color={colors.textTertiary} />
+            <Text style={styles.relatedPlaceholderText}>More stories coming soon!</Text>
+          </View>
         </View>
       </View>
       </ScrollView>
@@ -416,7 +447,7 @@ const styles = StyleSheet.create({
   relatedContent: {
     padding: spacing.md,
   },
-  relatedTitle: {
+  relatedCardTitle: {
     ...typography.body,
     color: colors.textPrimary,
     fontWeight: "600",
@@ -425,5 +456,31 @@ const styles = StyleSheet.create({
   relatedAuthor: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
+  },
+  loadingTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  loadingSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
+  relatedPlaceholder: {
+    alignItems: "center",
+    paddingVertical: spacing.xl,
+  },
+  relatedPlaceholderText: {
+    ...typography.body,
+    color: colors.textTertiary,
+    marginTop: spacing.sm,
   },
 });

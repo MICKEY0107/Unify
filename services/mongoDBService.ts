@@ -15,9 +15,24 @@ export interface UserProfile {
   updatedAt: Date;
 }
 
+export interface CommunityPost {
+  _id: string;
+  title: string;
+  subtitle?: string;
+  content: string[];
+  image?: string;
+  author: string;
+  authorId: string;
+  category: string;
+  likes: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 class MongoDBService {
   private static instance: MongoDBService;
   private readonly STORAGE_KEY = 'unify_user_profiles';
+  private readonly POSTS_STORAGE_KEY = 'unify_community_posts';
 
   private constructor() {}
 
@@ -358,6 +373,265 @@ class MongoDBService {
     const users = await this.getAllUsers();
     console.log('📊 All users in database:', JSON.stringify(users, null, 2));
     return users;
+  }
+
+  // ===== COMMUNITY POSTS METHODS =====
+
+  private async getAllPosts(): Promise<CommunityPost[]> {
+    try {
+      const postsJson = await AsyncStorage.getItem(this.POSTS_STORAGE_KEY);
+      return postsJson ? JSON.parse(postsJson) : [];
+    } catch (error) {
+      console.error('Error loading posts from storage:', error);
+      return [];
+    }
+  }
+
+  private async saveAllPosts(posts: CommunityPost[]): Promise<void> {
+    try {
+      await AsyncStorage.setItem(this.POSTS_STORAGE_KEY, JSON.stringify(posts));
+    } catch (error) {
+      console.error('Error saving posts to storage:', error);
+      throw new Error('Failed to save posts data');
+    }
+  }
+
+  public async createPost(postData: Omit<CommunityPost, '_id' | 'createdAt' | 'updatedAt' | 'likes'>): Promise<CommunityPost> {
+    try {
+      // Try API first
+      const now = new Date();
+      const post: CommunityPost = {
+        ...postData,
+        _id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        likes: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      try {
+        const response = await this.makeApiRequest('/api/posts', 'POST', post);
+        if (response.success) {
+          console.log('✅ Post created in MongoDB Atlas:', post._id);
+          return response.post;
+        }
+      } catch (apiError: any) {
+        if (apiError.message === 'API_UNAVAILABLE') {
+          // Fallback to local storage
+          return await this.createPostLocal(post);
+        }
+        throw apiError;
+      }
+      
+      // If API succeeds but response is not successful, fallback to local
+      return await this.createPostLocal(post);
+    } catch (error) {
+      console.error('Error creating post:', error);
+      throw new Error('Failed to create post');
+    }
+  }
+
+  private async createPostLocal(post: CommunityPost): Promise<CommunityPost> {
+    const posts = await this.getAllPosts();
+    
+    // Log MongoDB operation
+    this.logMongoDBOperation('INSERT', {
+      collection: 'posts',
+      database: 'unify',
+      document: post
+    });
+
+    posts.push(post);
+    await this.saveAllPosts(posts);
+    
+    console.log('✅ Post created in local storage (MongoDB simulation):', post._id);
+    return post;
+  }
+
+  public async getPosts(category?: string): Promise<CommunityPost[]> {
+    try {
+      // Try API first
+      try {
+        const endpoint = category ? `/api/posts?category=${encodeURIComponent(category)}` : '/api/posts';
+        const response = await this.makeApiRequest(endpoint, 'GET');
+        if (response.success) {
+          console.log('✅ Posts fetched from MongoDB Atlas');
+          return response.posts;
+        }
+      } catch (apiError: any) {
+        if (apiError.message === 'API_UNAVAILABLE') {
+          // Fallback to local storage
+          return await this.getPostsLocal(category);
+        }
+        throw apiError;
+      }
+      
+      // If API succeeds but response is not successful, fallback to local
+      return await this.getPostsLocal(category);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      throw new Error('Failed to fetch posts');
+    }
+  }
+
+  private async getPostsLocal(category?: string): Promise<CommunityPost[]> {
+    const posts = await this.getAllPosts();
+    
+    // Log MongoDB operation
+    const filter = category ? { category } : {};
+    this.logMongoDBOperation('FIND', {
+      collection: 'posts',
+      database: 'unify',
+      filter
+    });
+
+    let filteredPosts = posts;
+    if (category) {
+      filteredPosts = posts.filter(post => post.category === category);
+    }
+
+    // Sort by creation date (newest first)
+    filteredPosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    console.log(`✅ ${filteredPosts.length} posts found in local storage (MongoDB simulation)`);
+    return filteredPosts;
+  }
+
+  public async getPostById(id: string): Promise<CommunityPost | null> {
+    try {
+      // Try API first
+      try {
+        const response = await this.makeApiRequest(`/api/posts/${id}`, 'GET');
+        if (response.success) {
+          console.log('✅ Post found in MongoDB Atlas:', id);
+          return response.post;
+        }
+      } catch (apiError: any) {
+        if (apiError.message === 'API_UNAVAILABLE') {
+          // Fallback to local storage
+          return await this.getPostByIdLocal(id);
+        }
+        throw apiError;
+      }
+      
+      // If API succeeds but no post found, fallback to local
+      return await this.getPostByIdLocal(id);
+    } catch (error) {
+      console.error('Error fetching post:', error);
+      throw new Error('Failed to fetch post');
+    }
+  }
+
+  private async getPostByIdLocal(id: string): Promise<CommunityPost | null> {
+    const posts = await this.getAllPosts();
+    
+    // Log MongoDB operation
+    this.logMongoDBOperation('FIND_ONE', {
+      collection: 'posts',
+      database: 'unify',
+      filter: { _id: id }
+    });
+
+    const post = posts.find(post => post._id === id) || null;
+    
+    if (post) {
+      console.log('✅ Post found in local storage (MongoDB simulation):', id);
+    } else {
+      console.log('❌ Post not found in local storage (MongoDB simulation):', id);
+    }
+    
+    return post;
+  }
+
+  public async updatePostLikes(postId: string, increment: boolean): Promise<CommunityPost | null> {
+    try {
+      // Try API first
+      try {
+        const response = await this.makeApiRequest(`/api/posts/${postId}/likes`, 'PUT', { increment });
+        if (response.success) {
+          console.log('✅ Post likes updated in MongoDB Atlas:', postId);
+          return response.post;
+        }
+      } catch (apiError: any) {
+        if (apiError.message === 'API_UNAVAILABLE') {
+          // Fallback to local storage
+          return await this.updatePostLikesLocal(postId, increment);
+        }
+        throw apiError;
+      }
+      
+      // If API succeeds but no post found, fallback to local
+      return await this.updatePostLikesLocal(postId, increment);
+    } catch (error) {
+      console.error('Error updating post likes:', error);
+      throw new Error('Failed to update post likes');
+    }
+  }
+
+  private async updatePostLikesLocal(postId: string, increment: boolean): Promise<CommunityPost | null> {
+    const posts = await this.getAllPosts();
+    const postIndex = posts.findIndex(post => post._id === postId);
+    
+    if (postIndex === -1) {
+      return null;
+    }
+
+    const updatedPost: CommunityPost = {
+      ...posts[postIndex],
+      likes: increment ? posts[postIndex].likes + 1 : Math.max(0, posts[postIndex].likes - 1),
+      updatedAt: new Date(),
+    };
+
+    // Log MongoDB operation
+    this.logMongoDBOperation('UPDATE', {
+      collection: 'posts',
+      database: 'unify',
+      filter: { _id: postId },
+      update: { $inc: { likes: increment ? 1 : -1 } }
+    });
+
+    posts[postIndex] = updatedPost;
+    await this.saveAllPosts(posts);
+    
+    console.log('✅ Post likes updated in local storage (MongoDB simulation):', postId);
+    return updatedPost;
+  }
+
+  // Method to seed posts (for initial data)
+  public async seedPosts(posts: Omit<CommunityPost, '_id' | 'createdAt' | 'updatedAt' | 'likes'>[]): Promise<void> {
+    try {
+      const now = new Date();
+      const seededPosts: CommunityPost[] = posts.map((post, index) => ({
+        ...post,
+        _id: `seed_post_${index + 1}_${Date.now()}`,
+        likes: 0,
+        createdAt: now,
+        updatedAt: now,
+      }));
+
+      // Log MongoDB operation
+      this.logMongoDBOperation('INSERT_MANY', {
+        collection: 'posts',
+        database: 'unify',
+        documents: seededPosts
+      });
+
+      await this.saveAllPosts(seededPosts);
+      console.log(`✅ ${seededPosts.length} posts seeded successfully`);
+    } catch (error) {
+      console.error('Error seeding posts:', error);
+      throw new Error('Failed to seed posts');
+    }
+  }
+
+  // Method to clear all posts (useful for testing)
+  public async clearAllPosts(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(this.POSTS_STORAGE_KEY);
+      console.log('✅ All posts data cleared');
+    } catch (error) {
+      console.error('Error clearing posts data:', error);
+      throw new Error('Failed to clear posts data');
+    }
   }
 }
 

@@ -1,44 +1,107 @@
-import React, { useState } from "react";
-import { View, Text, Image, StyleSheet, ScrollView, TextInput, TouchableOpacity, Dimensions } from "react-native";
-import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing, borderRadius, typography, shadows } from "../../../constants/theme";
-
-import stories from './communityData';
-
-// Add error handling for data import
-const safeStories = stories || [];
+import { Link, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Dimensions, Image, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { borderRadius, colors, shadows, spacing, typography } from "../../../constants/theme";
+import { useAuth } from "../../../contexts/AuthContext";
+import { CommunityPost, mongoDBService } from "../../../services/mongoDBService";
 
 const { width } = Dimensions.get("window");
 
+const categories = [
+  "All Categories",
+  "Communication", 
+  "Physical & Mobility", 
+  "Cognitive & Learning", 
+  "Visual", 
+  "Hearing", 
+  "Mental Health", 
+  "General"
+];
+
 export default function CommunityList() {
   const router = useRouter();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredStories = safeStories.filter(story =>
-    story.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    story.subtitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    story.excerpt?.toLowerCase().includes(searchQuery.toLowerCase())
+  const loadPosts = async (category?: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const fetchedPosts = await mongoDBService.getPosts(category === "All Categories" ? undefined : category);
+      setPosts(fetchedPosts);
+      console.log('Community Posts loaded:', fetchedPosts.length);
+    } catch (err) {
+      console.error('Error loading posts:', err);
+      setError('Failed to load posts. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadPosts(selectedCategory === "All Categories" ? undefined : selectedCategory);
+    setIsRefreshing(false);
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    loadPosts(category === "All Categories" ? undefined : category);
+  };
+
+  useEffect(() => {
+    loadPosts();
+  }, []);
+
+  const filteredPosts = posts.filter(post =>
+    post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.subtitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.content.some(paragraph => 
+      paragraph.toLowerCase().includes(searchQuery.toLowerCase())
+    )
   );
 
-  // Add debugging
-  console.log('Community Stories loaded:', safeStories.length);
+  if (isLoading && posts.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="hourglass-outline" size={64} color={colors.primary} />
+          <Text style={styles.loadingTitle}>Loading Stories...</Text>
+          <Text style={styles.loadingSubtitle}>Please wait while we fetch the latest posts</Text>
+        </View>
+      </View>
+    );
+  }
 
-  // Add error boundary
-  if (!safeStories || safeStories.length === 0) {
+  if (error && posts.length === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color={colors.textTertiary} />
           <Text style={styles.errorTitle}>Unable to load stories</Text>
-          <Text style={styles.errorSubtitle}>Please try again later</Text>
+          <Text style={styles.errorSubtitle}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => loadPosts()}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+      }
+    >
       {/* Header Section */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Community Stories</Text>
@@ -55,6 +118,30 @@ export default function CommunityList() {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
+      </View>
+
+      {/* Category Filter */}
+      <View style={styles.categorySection}>
+        <Text style={styles.categoryTitle}>Filter by Category</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category}
+              style={[
+                styles.categoryChip,
+                selectedCategory === category && styles.categoryChipSelected
+              ]}
+              onPress={() => handleCategoryChange(category)}
+            >
+              <Text style={[
+                styles.categoryChipText,
+                selectedCategory === category && styles.categoryChipTextSelected
+              ]}>
+                {category}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {/* Quick Post Composer */}
@@ -83,10 +170,10 @@ export default function CommunityList() {
       <View style={styles.storiesSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Inspiring Stories</Text>
-          <Text style={styles.storyCount}>{filteredStories.length} stories</Text>
+          <Text style={styles.storyCount}>{filteredPosts.length} stories</Text>
         </View>
 
-        {filteredStories.length === 0 ? (
+        {filteredPosts.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="book-outline" size={64} color={colors.textTertiary} />
             <Text style={styles.emptyTitle}>No stories found</Text>
@@ -95,38 +182,41 @@ export default function CommunityList() {
             </Text>
           </View>
         ) : (
-          filteredStories.map((story) => (
-            <Link key={story.id} href={`/community/read/${story.id}`} asChild>
+          filteredPosts.map((post) => (
+            <Link key={post._id} href={`/community/read/${post._id}`} asChild>
               <TouchableOpacity style={styles.storyCard}>
                 <View style={styles.storyImageContainer}>
                   <Image 
-                    source={story.image || require("../../../assets/images/community.png")} 
+                    source={post.image ? { uri: post.image } : require("../../../assets/images/community.png")} 
                     style={styles.storyImage} 
                     resizeMode="cover" 
                   />
                   <View style={styles.storyOverlay}>
                     <View style={styles.readTimeContainer}>
                       <Ionicons name="time-outline" size={14} color="#FFFFFF" />
-                      <Text style={styles.readTime}>3 min read</Text>
+                      <Text style={styles.readTime}>{Math.ceil(post.content.join(' ').split(' ').length / 200)} min read</Text>
+                    </View>
+                    <View style={styles.categoryBadge}>
+                      <Text style={styles.categoryBadgeText}>{post.category}</Text>
                     </View>
                   </View>
                 </View>
                 
                 <View style={styles.storyContent}>
                   <View style={styles.storyHeader}>
-                    <Text style={styles.storyTitle}>{story.title}</Text>
+                    <Text style={styles.storyTitle}>{post.title}</Text>
                     <View style={styles.storyBadge}>
                       <Ionicons name="heart" size={12} color="#FF6B6B" />
-                      <Text style={styles.storyBadgeText}>Inspiring</Text>
+                      <Text style={styles.storyBadgeText}>{post.likes} likes</Text>
                     </View>
                   </View>
                   
-                  {story.subtitle && (
-                    <Text style={styles.storySubtitle}>{story.subtitle}</Text>
+                  {post.subtitle && (
+                    <Text style={styles.storySubtitle}>{post.subtitle}</Text>
                   )}
                   
                   <Text style={styles.storyExcerpt} numberOfLines={3}>
-                    {story.excerpt}
+                    {post.content[0] || "Read the full story..."}
                   </Text>
                   
                   <View style={styles.storyFooter}>
@@ -134,7 +224,7 @@ export default function CommunityList() {
                       <View style={styles.authorAvatar}>
                         <Ionicons name="person" size={16} color={colors.primary} />
                       </View>
-                      <Text style={styles.authorName}>{story.author || "Anonymous"}</Text>
+                      <Text style={styles.authorName}>{post.author}</Text>
                     </View>
                     
                     <TouchableOpacity style={styles.readMoreButton}>
@@ -400,5 +490,78 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.lg,
+  },
+  retryButtonText: {
+    ...typography.button,
+    color: "#FFFFFF",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: spacing.xl,
+  },
+  loadingTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  loadingSubtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
+  categorySection: {
+    marginBottom: spacing.lg,
+  },
+  categoryTitle: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: "600",
+    marginBottom: spacing.sm,
+  },
+  categoryScroll: {
+    marginTop: spacing.sm,
+  },
+  categoryChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: spacing.sm,
+  },
+  categoryChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  categoryChipText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  categoryChipTextSelected: {
+    color: "#FFFFFF",
+  },
+  categoryBadge: {
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.sm,
+  },
+  categoryBadgeText: {
+    ...typography.caption,
+    color: "#FFFFFF",
+    fontWeight: "600",
   },
 });
